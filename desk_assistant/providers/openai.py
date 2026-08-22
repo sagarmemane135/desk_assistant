@@ -1,0 +1,138 @@
+# Copyright (c) 2026, Desk Assistant and contributors
+# For license information, please see license.txt
+
+from frappe import _
+
+from desk_assistant.providers.base import Completion, LLMConfig, ProviderError
+from desk_assistant.providers.http import post_json
+from desk_assistant.providers.toolfmt import dump_arguments, openai_tools, parse_arguments
+
+
+def complete(
+	config: LLMConfig,
+	messages: list[dict],
+	system: str | None = None,
+	extra_headers: dict | None = None,
+	tools: list[dict] | None = None,
+) -> Completion:
+	url = f"{config.base_url}/chat/completions"
+	payload_messages = []
+	if system:
+		payload_messages.append({"role": "system", "content": system})
+	payload_messages.extend(_openai_messages(messages))
+	payload = {
+		"model": config.model,
+		"messages": payload_messages,
+	}
+	if _uses_max_completion_tokens(config):
+		payload["max_completion_tokens"] = config.max_tokens
+	else:
+		payload["max_tokens"] = config.max_tokens
+	formatted = openai_tools(tools)
+	if formatted:
+		payload["tools"] = formatted
+		payload["tool_choice"] = "auto"
+	headers = {
+		"Authorization": f"Bearer {config.api_key}",
+	}
+	if extra_headers:
+		headers.update(extra_headers)
+	data = post_json(url, headers, payload)
+	return _parse_completion(data)
+
+
+def _openai_messages(messages: list[dict]) -> list[dict]:
+	out = []
+	for item in messages:
+		role = item.get("role")
+		if role == "tool":
+			out.append(
+				{
+					"role": "tool",
+					"tool_call_id": item.get("tool_call_id") or "",
+					"content": item.get("content") or "",
+				}
+			)
+			continue
+		if role not in ("user", "assistant", "system"):
+			continue
+		msg = {"role": role, "content": item.get("content") or ""}
+		if role == "assistant" and item.get("tool_calls"):
+			msg["tool_calls"] = [
+				{
+					"id": call.get("id") or "",
+					"type": "function",
+					"function": {
+						"name": call.get("name") or "",
+						"arguments": dump_arguments(call.get("arguments")),
+					},
+				}
+				for call in item["tool_calls"]
+			]
+			if not (msg["content"] or "").strip():
+				msg["content"] = None
+		out.append(msg)
+	if not out:
+		raise ProviderError(_("Type a message."))
+	return out
+
+
+def _parse_completion(data: dict) -> Completion:
+	choices = data.get("choices") or []
+	if not choices:
+		err = data.get("error") or {}
+		if isinstance(err, dict) and err.get("message"):
+			raise ProviderError(_("Provider error: {0}").format(str(err["message"])[:240]))
+		raise ProviderError(_("The provider returned no message."))
+	message = choices[0].get("message") or {}
+	tool_calls = _tool_calls(message.get("tool_calls"))
+	text = _content_text(message.get("content"))
+	if not text and not tool_calls:
+		raise ProviderError(_("The provider returned an empty message."))
+	usage = data.get("usage") or {}
+	return Completion(
+		text=text,
+		token_in=int(usage.get("prompt_tokens") or 0),
+		token_out=int(usage.get("completion_tokens") or 0),
+		tool_calls=tool_calls,
+	)
+
+
+def _content_text(content) -> str:
+	if isinstance(content, str):
+		return content.strip()
+	if isinstance(content, list):
+		parts = []
+		for block in content:
+			if isinstance(block, dict) and block.get("type") == "text":
+				parts.append(block.get("text") or "")
+		return "".join(parts).strip()
+	return ""
+
+
+def _tool_calls(raw) -> list[dict] | None:
+	if not raw:
+		return None
+	out = []
+	for i, item in enumerate(raw):
+		if not isinstance(item, dict):
+			continue
+		fn = item.get("function") or {}
+		name = fn.get("name") or item.get("name") or ""
+		if not name:
+			continue
+		out.append(
+			{
+				"id": item.get("id") or f"call_{i}_{name}",
+				"name": name,
+				"arguments": parse_arguments(fn.get("arguments") or item.get("arguments")),
+			}
+		)
+	return out or None
+
+
+def _uses_max_completion_tokens(config: LLMConfig) -> bool:
+	if config.provider == "ollama":
+		return False
+	leaf = (config.model or "").lower().split("/")[-1]
+	return leaf.startswith(("o1", "o3", "o4", "gpt-5"))

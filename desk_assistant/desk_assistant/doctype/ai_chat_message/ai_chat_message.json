@@ -1,0 +1,45 @@
+{
+ "actions": [],
+ "creation": "2026-08-22 06:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": ["role", "content", "tool_name", "tool_payload"],
+ "fields": [
+  {
+   "fieldname": "role",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Role",
+   "options": "user\nassistant\ntool",
+   "reqd": 1
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Long Text",
+   "in_list_view": 1,
+   "label": "Content"
+  },
+  {
+   "fieldname": "tool_name",
+   "fieldtype": "Data",
+   "label": "Tool Name"
+  },
+  {
+   "fieldname": "tool_payload",
+   "fieldtype": "JSON",
+   "label": "Tool Payload"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-22 06:00:00",
+ "modified_by": "Administrator",
+ "module": "Desk Assistant",
+ "name": "AI Chat Message",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

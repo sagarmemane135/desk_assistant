@@ -1,0 +1,305 @@
+/* Desk Assistant — flex column after .main-section (beside Assign/Share, not overlay). */
+
+:root {
+	--desk-assistant-width: 360px;
+}
+
+body.desk-assistant-docked .main-section {
+	width: auto;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.desk-assistant-panel {
+	position: relative;
+	flex: 0 0 var(--desk-assistant-width);
+	width: var(--desk-assistant-width);
+	height: 100vh;
+	align-self: stretch;
+	z-index: 6;
+	display: flex;
+	flex-direction: column;
+	background: var(--card-bg, var(--bg-color, #fff));
+	border-left: 1px solid var(--border-color);
+	color: var(--text-color);
+	min-width: 0;
+}
+
+.desk-assistant-panel.is-collapsed {
+	display: none;
+}
+
+.desk-assistant-handle {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 6px;
+	cursor: ew-resize;
+	z-index: 2;
+}
+
+.desk-assistant-handle:hover,
+body.desk-assistant-resizing .desk-assistant-handle {
+	background: var(--primary, #2490ef);
+	opacity: 0.35;
+}
+
+.desk-assistant-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px 8px 14px;
+	border-bottom: 1px solid var(--border-color);
+	min-height: 44px;
+	flex-shrink: 0;
+}
+
+.desk-assistant-title {
+	font-weight: 600;
+	font-size: var(--text-base, 13px);
+	flex: 1;
+	min-width: 0;
+}
+
+.desk-assistant-meta {
+	font-size: 11px;
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 40%;
+}
+
+.desk-assistant-header .btn {
+	padding: 2px 6px;
+	line-height: 1.2;
+}
+
+.desk-assistant-context {
+	display: none;
+	padding: 6px 14px;
+	font-size: 12px;
+	color: var(--text-muted);
+	border-bottom: 1px solid var(--border-color);
+	background: var(--subtle-fg, var(--control-bg, #f5f5f5));
+	flex-shrink: 0;
+}
+
+.desk-assistant-context.is-visible {
+	display: block;
+}
+
+.desk-assistant-panel.is-settings .desk-assistant-context,
+.desk-assistant-panel.is-settings .desk-assistant-messages,
+.desk-assistant-panel.is-settings .desk-assistant-footer {
+	display: none;
+}
+
+.desk-assistant-settings {
+	display: none;
+	flex: 1;
+	overflow-y: auto;
+	padding: 12px 14px 16px;
+	gap: 10px;
+	flex-direction: column;
+}
+
+.desk-assistant-panel.is-settings .desk-assistant-settings {
+	display: flex;
+}
+
+.da-set-label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.desk-assistant-settings input,
+.desk-assistant-settings select {
+	font-weight: 400;
+	font-size: 13px;
+	color: var(--text-color);
+	background: var(--control-bg, var(--bg-color));
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	padding: 6px 8px;
+	width: 100%;
+}
+
+.da-set-hint {
+	margin: 0;
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+.da-set-profile-row {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+}
+
+.da-set-profile-row select {
+	flex: 1;
+	min-width: 0;
+}
+
+.da-set-profile-row .btn {
+	flex: 0 0 auto;
+	padding: 6px 10px;
+}
+
+.da-set-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 4px;
+}
+
+.desk-assistant-messages {
+	flex: 1;
+	overflow-y: auto;
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.desk-assistant-empty {
+	margin: auto;
+	text-align: center;
+	color: var(--text-muted);
+	font-size: 13px;
+	padding: 16px;
+	max-width: 280px;
+}
+
+.desk-assistant-bubble {
+	max-width: 92%;
+	padding: 8px 10px;
+	border-radius: 10px;
+	font-size: 13px;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.desk-assistant-bubble.user {
+	align-self: flex-end;
+	background: var(--primary, #2490ef);
+	color: #fff;
+}
+
+.desk-assistant-bubble.assistant {
+	align-self: flex-start;
+	background: var(--control-bg, var(--subtle-fg, #f3f3f3));
+	color: var(--text-color);
+}
+
+.desk-assistant-bubble.assistant a {
+	color: var(--primary, #2490ef);
+	text-decoration: underline;
+}
+
+.desk-assistant-bubble.assistant strong {
+	font-weight: 600;
+}
+
+.desk-assistant-bubble.assistant em {
+	font-style: italic;
+}
+
+.desk-assistant-bubble.assistant code {
+	font-size: 12px;
+	padding: 1px 4px;
+	border-radius: 3px;
+	background: var(--bg-color, rgba(0, 0, 0, 0.06));
+}
+
+.desk-assistant-table-wrap {
+	margin: 8px 0;
+	overflow-x: auto;
+	white-space: normal;
+	max-width: 100%;
+}
+
+.desk-assistant-table {
+	width: 100%;
+	border-collapse: collapse;
+	white-space: normal;
+	font-size: 12px;
+}
+
+.desk-assistant-table th,
+.desk-assistant-table td {
+	border: 1px solid var(--border-color);
+	padding: 4px 8px;
+	text-align: left;
+	white-space: nowrap;
+}
+
+.desk-assistant-table th {
+	font-weight: 600;
+	background: var(--subtle-fg, var(--bg-color, #eee));
+}
+
+.desk-assistant-footer {
+	border-top: 1px solid var(--border-color);
+	padding: 8px 10px 10px;
+	flex-shrink: 0;
+}
+
+.desk-assistant-footer textarea {
+	width: 100%;
+	resize: none;
+	min-height: 64px;
+	max-height: 140px;
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	padding: 8px;
+	background: var(--control-bg, var(--bg-color));
+	color: var(--text-color);
+	font-size: 13px;
+}
+
+.desk-assistant-footer-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.desk-assistant-tab {
+	display: none;
+	flex: 0 0 32px;
+	width: 32px;
+	height: 100vh;
+	align-self: stretch;
+	writing-mode: vertical-rl;
+	transform: rotate(180deg);
+	padding: 16px 4px;
+	border: none;
+	border-left: 1px solid var(--border-color);
+	border-radius: 0;
+	background: var(--card-bg, var(--bg-color, #fff));
+	color: var(--text-color);
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.desk-assistant-tab.is-visible {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+body.desk-assistant-resizing {
+	cursor: ew-resize;
+	user-select: none;
+}

@@ -1,0 +1,30 @@
+{
+ "app": "desk_assistant",
+ "creation": "2026-08-22 06:00:00",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon": "message-circle",
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "Desk Assistant",
+ "link_to": "Desk Assistant",
+ "link_type": "Workspace Sidebar",
+ "modified": "2026-08-22 16:00:00",
+ "modified_by": "Administrator",
+ "name": "Desk Assistant",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "AI Assistant Manager"
+  },
+  {
+   "role": "AI Assistant User"
+  }
+ ],
+ "standard": 1
+}

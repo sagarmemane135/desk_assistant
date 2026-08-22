@@ -1,0 +1,139 @@
+{
+ "actions": [],
+ "creation": "2026-08-22 06:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "editable_grid": 1,
+ "field_order": [
+  "enabled",
+  "limits_section",
+  "max_rows",
+  "max_tool_rounds",
+  "max_tokens",
+  "provider_section",
+  "default_provider",
+  "default_model",
+  "column_break_provider",
+  "default_api_key",
+  "default_base_url",
+  "allowlist_section",
+  "allowed_doctypes"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "description": "Master switch. Off: nobody sees the sidebar or can call the chat API.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "limits_section",
+   "fieldtype": "Section Break",
+   "label": "Limits"
+  },
+  {
+   "default": "50",
+   "fieldname": "max_rows",
+   "fieldtype": "Int",
+   "label": "Max Rows Per Query"
+  },
+  {
+   "default": "8",
+   "fieldname": "max_tool_rounds",
+   "fieldtype": "Int",
+   "label": "Max Tool Rounds"
+  },
+  {
+   "default": "4096",
+   "fieldname": "max_tokens",
+   "fieldtype": "Int",
+   "label": "Max Tokens"
+  },
+  {
+   "fieldname": "provider_section",
+   "fieldtype": "Section Break",
+   "label": "Site Default Provider"
+  },
+  {
+   "fieldname": "default_provider",
+   "fieldtype": "Select",
+   "label": "Default Provider",
+   "options": "\nopenai\nanthropic\ngoogle\ngroq\nopenrouter\nollama\nopenai_compatible"
+  },
+  {
+   "fieldname": "default_model",
+   "fieldtype": "Autocomplete",
+   "length": 255,
+   "label": "Default Model"
+  },
+  {
+   "fieldname": "column_break_provider",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Used only if the user has no key of their own. Never sent to the browser.",
+   "fieldname": "default_api_key",
+   "fieldtype": "Password",
+   "label": "Default API Key",
+   "length": 2048
+  },
+  {
+   "description": "Filled automatically for OpenAI, Anthropic, Gemini, OpenRouter, and Ollama.",
+   "fieldname": "default_base_url",
+   "fieldtype": "Data",
+   "label": "Default Base URL",
+   "length": 512
+  },
+  {
+   "fieldname": "allowlist_section",
+   "fieldtype": "Section Break",
+   "label": "DocType Allowlist (optional)"
+  },
+  {
+   "description": "Leave this table empty (recommended). Empty = the assistant may query any DocType this user can already read in Desk, except a hard blocklist (User, passwords, Error Log, API keys, and similar). Add rows only if you want a narrower AI than Desk — then the assistant can use only those DocTypes, still limited by the user's permissions. Filling this is optional and usually unnecessary.",
+   "fieldname": "allowed_doctypes",
+   "fieldtype": "Table",
+   "label": "Allowed DocTypes",
+   "options": "AI Assistant Allowed DocType"
+  }
+ ],
+ "idx": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-22 16:10:00",
+ "modified_by": "Administrator",
+ "module": "Desk Assistant",
+ "name": "AI Assistant Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "AI Assistant Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

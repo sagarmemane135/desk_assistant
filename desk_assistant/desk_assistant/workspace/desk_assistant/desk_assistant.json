@@ -1,0 +1,102 @@
+{
+ "app": "desk_assistant",
+ "charts": [],
+ "content": "[{\"id\":\"hdr-desk-assistant\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Desk Assistant</b></span>\",\"col\":12}},{\"id\":\"card-setup\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup\",\"col\":4}},{\"id\":\"card-logs\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":4}}]",
+ "creation": "2026-08-22 06:00:00",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "message-circle",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Desk Assistant",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Setup",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AI Assistant Settings",
+   "link_count": 0,
+   "link_to": "AI Assistant Settings",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "User AI Settings",
+   "link_count": 0,
+   "link_to": "User AI Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Logs",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AI Assistant Audit Log",
+   "link_count": 0,
+   "link_to": "AI Assistant Audit Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AI Chat Session",
+   "link_count": 0,
+   "link_to": "AI Chat Session",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-08-22 16:00:00",
+ "modified_by": "Administrator",
+ "module": "Desk Assistant",
+ "name": "Desk Assistant",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "AI Assistant Manager"
+  },
+  {
+   "role": "AI Assistant User"
+  }
+ ],
+ "shortcuts": [
+  {
+   "label": "AI Assistant Settings",
+   "link_to": "AI Assistant Settings",
+   "type": "DocType"
+  }
+ ],
+ "title": "Desk Assistant",
+ "type": "Workspace"
+}

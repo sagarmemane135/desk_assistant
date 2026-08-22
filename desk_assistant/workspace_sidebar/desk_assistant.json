@@ -1,0 +1,77 @@
+{
+ "app": "desk_assistant",
+ "creation": "2026-08-22 06:00:00",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "message-circle",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "home",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Home",
+   "link_to": "Desk Assistant",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "settings",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "AI Assistant Settings",
+   "link_to": "AI Assistant Settings",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "user",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "User AI Settings",
+   "link_to": "User AI Settings",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "AI Chat Session",
+   "link_to": "AI Chat Session",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "scroll-text",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "AI Assistant Audit Log",
+   "link_to": "AI Assistant Audit Log",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-08-22 06:00:00",
+ "modified_by": "Administrator",
+ "module": "Desk Assistant",
+ "name": "Desk Assistant",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Desk Assistant"
+}

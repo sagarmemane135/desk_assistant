@@ -6,6 +6,7 @@ import json
 import frappe
 from frappe import _
 
+from desk_assistant.citations import from_session_messages
 from desk_assistant.permissions import user_is_assistant_manager
 
 HISTORY_CAP = 20
@@ -85,7 +86,12 @@ def public_session(session: str | None) -> dict:
 		for row in (doc.messages or [])
 		if row.role in ("user", "assistant") and (row.content or "").strip()
 	]
-	return {"session": doc.name, "title": doc.title or "", "messages": messages}
+	return {
+		"session": doc.name,
+		"title": doc.title or "",
+		"messages": messages,
+		"citations": from_session_messages(doc.messages),
+	}
 
 
 def latest_open_session() -> str | None:

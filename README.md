@@ -9,9 +9,31 @@ This is a Frappe app, not an MCP server. Chat stays inside Desk. The assistant i
 - Right-hand Desk sidebar (resize, collapse, persist width)
 - Site master switch plus role **AI Assistant User** (install does not enable it for everyone)
 - Tools that run as `frappe.session.user`: `query`, `get_doc`, `get_meta`, `search`, `run_report`, `get_me`
+- Streaming replies with **Stop**; **Copy** on finished assistant messages
 - Chat sessions that survive refresh; **New** starts a fresh thread
 - Audit log of tool calls for managers
 - API keys stored server-side (never sent to the browser)
+
+## Features (MVP)
+
+Replies stay **short prose** unless you ask for more. The assistant does not invent totals; charts and tables use numbers from tools.
+
+| Feature | What it does |
+|---|---|
+| **Streaming** | Tokens appear as they arrive. **Stop** cancels the in-flight request. |
+| **Tables (opt-in)** | A markdown table only if you ask for a table, list, ranking, or breakdown — or several rows must be compared. “Which customer has the largest overdue?” is a sentence plus a document link, not a ranking table. |
+| **Charts (opt-in)** | Bar, line, pie, or donut when you ask for a chart (or a short comparison needs one). Drawn with Desk `frappe.Chart`. A ranking without the word “chart” stays a table. |
+| **Desk links** | Invoice and other document IDs are clickable. A click opens the form in the **main pane**; the sidebar stays. Ctrl/Cmd-click opens a new tab. |
+| **Copy** | Finished assistant replies have **Copy** (raw markdown, including any chart fence). |
+| **Language** | The model matches the language you type. Say **speak in Marathi** (or Hindi, Tamil, Japanese, …) to lock that language for the rest of the chat; **speak in English** to switch back. Document names, Desk URLs, field names, numbers, and chart JSON stay untranslated. |
+| **Context chip** | On a form, the open document is optional context. You can still ask about other records you can read. |
+
+### Example asks
+
+- `top 5 sales invoices of year 2023` → ranking table + Desk links
+- `top 6 sales invoices bar chart` → bar chart, no table unless you also asked for one
+- `which customer has the largest overdue receivable?` → one sentence + invoice link
+- `speak in marathi` then any later question in that thread → replies in Marathi until you say `speak in english`
 
 ## Compatibility
 
@@ -123,8 +145,8 @@ If the user has no key, the site default on **AI Assistant Settings** is used.
 
 1. Open any Desk page (Home is enough)
 2. Type a question, for example: `top 5 sales invoices of year 2023`
-3. Answers include Desk links when the lookup succeeds
-4. **New** starts a new chat session; refresh restores the open thread
+3. Answers include Desk links when the lookup succeeds — click a link to open the form beside the sidebar
+4. **New** starts a new chat session; refresh restores the open thread (scroll stays on the latest message)
 
 The open document is optional context, not a limit. The assistant queries whatever that user is allowed to read.
 

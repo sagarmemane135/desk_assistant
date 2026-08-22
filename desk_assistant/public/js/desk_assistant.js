@@ -267,6 +267,7 @@ desk_assistant.inject = function (width, collapsed) {
 
 desk_assistant.apply_layout = function (width, collapsed) {
 	const w = desk_assistant.clamp_width(width);
+	const was_collapsed = $("#desk-assistant-panel").hasClass("is-collapsed");
 	document.documentElement.style.setProperty("--desk-assistant-width", `${w}px`);
 	$("body").addClass("desk-assistant-docked");
 	$("body").toggleClass("desk-assistant-open", !collapsed);
@@ -275,6 +276,9 @@ desk_assistant.apply_layout = function (width, collapsed) {
 	$("#desk-assistant-tab").toggleClass("is-visible", !!collapsed);
 	desk_assistant.write_local(w, !!collapsed);
 	desk_assistant.schedule_save(w, collapsed);
+	if (was_collapsed && !collapsed) {
+		desk_assistant.schedule_charts(true);
+	}
 };
 
 desk_assistant.clamp_width = function (width) {
@@ -395,6 +399,60 @@ desk_assistant.server_message = function (json) {
 	}
 };
 
+desk_assistant._doc_links = desk_assistant._doc_links || {};
+
+desk_assistant.merge_citations = function (rows) {
+	(rows || []).forEach(function (row) {
+		if (row && row.name && row.desk_path) {
+			desk_assistant._doc_links[row.name] = row.desk_path;
+		}
+	});
+};
+
+desk_assistant.escape_regex = function (text) {
+	return String(text || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
+desk_assistant.linkify_docs = function (text) {
+	let out = String(text || "");
+	const names = Object.keys(desk_assistant._doc_links || {}).sort(function (a, b) {
+		return b.length - a.length;
+	});
+	names.forEach(function (name) {
+		const path = desk_assistant._doc_links[name];
+		if (!path || out.indexOf(name) === -1) {
+			return;
+		}
+		const re = new RegExp("\\[" + desk_assistant.escape_regex(name) + "\\]\\([^\\)]+\\)|" + desk_assistant.escape_regex(name), "g");
+		out = out.replace(re, function (full) {
+			if (full.charAt(0) === "[") {
+				return full;
+			}
+			return "[" + name + "](" + path + ")";
+		});
+	});
+	return out;
+};
+
+desk_assistant.open_desk_path = function (href) {
+	const url = String(href || "");
+	let path = url;
+	try {
+		path = new URL(url, window.location.origin).pathname;
+	} catch (e) {
+		path = url.split("?")[0];
+	}
+	if (!path || (path.indexOf("/desk/") !== 0 && path.indexOf("/app/") !== 0)) {
+		return false;
+	}
+	if (frappe.set_route) {
+		frappe.set_route(path);
+		return true;
+	}
+	window.location.href = path;
+	return true;
+};
+
 desk_assistant.escape_html = function (text) {
 	return $("<div>").text(text || "").html();
 };
@@ -405,14 +463,15 @@ desk_assistant.format_inline = function (text) {
 	html = html.replace(
 		/\[([^\]]+)\]\((\/(?:desk|app)\/[^)\s]+|https?:\/\/[^)\s]+)\)/g,
 		function (_m, label, href) {
-			return '<a href="' + href + '">' + label + "</a>";
+			const cls = href.indexOf("/desk/") === 0 || href.indexOf("/app/") === 0 ? ' class="desk-assistant-doc-link"' : "";
+			return "<a" + cls + ' href="' + href + '">' + label + "</a>";
 		}
 	);
 	html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 	html = html.replace(/__(.+?)__/g, "<strong>$1</strong>");
 	html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
 	html = html.replace(/(^|[^"'>])(\/desk\/[A-Za-z0-9._~\-/%]+)/g, function (_m, prefix, path) {
-		return prefix + '<a href="' + path + '">' + path + "</a>";
+		return prefix + '<a class="desk-assistant-doc-link" href="' + path + '">' + path + "</a>";
 	});
 	return html;
 };
@@ -437,6 +496,103 @@ desk_assistant._split_table_row = function (line) {
 	return t.split("|").map(function (cell) {
 		return cell.trim();
 	});
+};
+
+desk_assistant.CHART_TYPES = { bar: 1, line: 1, pie: 1, donut: 1 };
+desk_assistant.MAX_CHART_POINTS = 16;
+
+desk_assistant.parse_number = function (raw) {
+	if (raw == null) {
+		return null;
+	}
+	let s = String(raw).trim();
+	if (!s) {
+		return null;
+	}
+	s = s.replace(/,/g, "").replace(/[%₹$€£]/g, "");
+	const n = Number(s);
+	return Number.isFinite(n) ? n : null;
+};
+
+desk_assistant.parse_chart_json = function (raw) {
+	const s = String(raw || "").trim();
+	if (!s) {
+		return null;
+	}
+	try {
+		return JSON.parse(s);
+	} catch (e) {
+		const start = s.indexOf("{");
+		const end = s.lastIndexOf("}");
+		if (start >= 0 && end > start) {
+			try {
+				return JSON.parse(s.slice(start, end + 1));
+			} catch (err) {
+				return null;
+			}
+		}
+	}
+	return null;
+};
+
+desk_assistant.normalize_chart_spec = function (raw) {
+	let spec = raw;
+	if (typeof raw === "string") {
+		spec = desk_assistant.parse_chart_json(raw);
+	}
+	if (!spec || typeof spec !== "object") {
+		return null;
+	}
+	const type = String(spec.type || "bar").toLowerCase();
+	if (!desk_assistant.CHART_TYPES[type]) {
+		return null;
+	}
+	let labels = spec.labels;
+	let values = spec.values;
+	if ((!Array.isArray(values) || !Array.isArray(labels)) && spec.datasets && spec.datasets[0]) {
+		values = values || spec.datasets[0].values;
+		labels = labels || spec.datasets[0].labels;
+	}
+	if (!Array.isArray(labels) || !Array.isArray(values)) {
+		return null;
+	}
+	const n = Math.min(labels.length, values.length, desk_assistant.MAX_CHART_POINTS);
+	const max_lab = type === "pie" || type === "donut" ? 24 : 10;
+	const out_labels = [];
+	const out_values = [];
+	for (let i = 0; i < n; i++) {
+		const v = desk_assistant.parse_number(values[i]);
+		if (v == null) {
+			continue;
+		}
+		let lab = String(labels[i] == null ? "" : labels[i]).replace(/[*`<>]/g, "").trim();
+		if (lab.length > max_lab) {
+			lab = lab.slice(0, max_lab - 1) + "…";
+		}
+		out_labels.push(lab || String(i + 1));
+		out_values.push(v);
+	}
+	if (out_values.length < 2) {
+		return null;
+	}
+	return {
+		type: type,
+		title: String(spec.title || "").slice(0, 80),
+		labels: out_labels,
+		values: out_values,
+	};
+};
+
+desk_assistant.chart_placeholder = function (spec) {
+	return (
+		'<div class="desk-assistant-chart" data-spec="' +
+		encodeURIComponent(JSON.stringify(spec)) +
+		'"></div>'
+	);
+};
+
+desk_assistant.strip_chart_fences = function (text) {
+	return String(text || "").replace(/```chart[^\n]*\n[\s\S]*?(```|$)/g, "\n");
 };
 
 desk_assistant.format_table = function (lines) {
@@ -467,16 +623,53 @@ desk_assistant.format_table = function (lines) {
 	return '<div class="desk-assistant-table-wrap">' + html + "</div>";
 };
 
-desk_assistant.format_reply = function (text) {
+desk_assistant._is_table_start = function (lines, i) {
+	return (
+		i + 1 < lines.length &&
+		desk_assistant._is_table_row(lines[i]) &&
+		desk_assistant._is_table_sep(lines[i + 1])
+	);
+};
+
+desk_assistant._heading_match = function (line) {
+	return String(line || "").match(/^(#{1,6})\s+(.+?)\s*$/);
+};
+
+desk_assistant._is_hr = function (line) {
+	return /^(\*\s*){3,}$|^(-{3,})\s*$|^_{3,}\s*$/.test(String(line || "").trim());
+};
+
+desk_assistant._is_ul = function (line) {
+	return /^\s*[-*+]\s+\S/.test(String(line || ""));
+};
+
+desk_assistant._is_ol = function (line) {
+	return /^\s*\d+[.)]\s+\S/.test(String(line || ""));
+};
+
+desk_assistant.format_heading = function (line) {
+	const m = desk_assistant._heading_match(line);
+	if (!m) {
+		return "";
+	}
+	const level = Math.min(Math.max(m[1].length, 1), 4);
+	return (
+		"<h" +
+		level +
+		' class="desk-assistant-h">' +
+		desk_assistant.format_inline(m[2]) +
+		"</h" +
+		level +
+		">"
+	);
+};
+
+desk_assistant.format_markdown = function (text) {
 	const lines = String(text || "").split("\n");
 	const out = [];
 	let i = 0;
 	while (i < lines.length) {
-		if (
-			i + 1 < lines.length &&
-			desk_assistant._is_table_row(lines[i]) &&
-			desk_assistant._is_table_sep(lines[i + 1])
-		) {
+		if (desk_assistant._is_table_start(lines, i)) {
 			const block = [lines[i], lines[i + 1]];
 			i += 2;
 			while (i < lines.length && desk_assistant._is_table_row(lines[i])) {
@@ -486,14 +679,50 @@ desk_assistant.format_reply = function (text) {
 			out.push(desk_assistant.format_table(block));
 			continue;
 		}
+		if (desk_assistant._heading_match(lines[i])) {
+			out.push(desk_assistant.format_heading(lines[i]));
+			i += 1;
+			continue;
+		}
+		if (desk_assistant._is_hr(lines[i])) {
+			out.push('<hr class="desk-assistant-hr">');
+			i += 1;
+			continue;
+		}
+		if (desk_assistant._is_ul(lines[i])) {
+			const items = [];
+			while (i < lines.length && desk_assistant._is_ul(lines[i])) {
+				items.push(
+					"<li>" +
+						desk_assistant.format_inline(String(lines[i]).replace(/^\s*[-*+]\s+/, "")) +
+						"</li>"
+				);
+				i += 1;
+			}
+			out.push('<ul class="desk-assistant-list">' + items.join("") + "</ul>");
+			continue;
+		}
+		if (desk_assistant._is_ol(lines[i])) {
+			const items = [];
+			while (i < lines.length && desk_assistant._is_ol(lines[i])) {
+				items.push(
+					"<li>" +
+						desk_assistant.format_inline(String(lines[i]).replace(/^\s*\d+[.)]\s+/, "")) +
+						"</li>"
+				);
+				i += 1;
+			}
+			out.push('<ol class="desk-assistant-list">' + items.join("") + "</ol>");
+			continue;
+		}
 		const chunk = [];
 		while (
 			i < lines.length &&
-			!(
-				i + 1 < lines.length &&
-				desk_assistant._is_table_row(lines[i]) &&
-				desk_assistant._is_table_sep(lines[i + 1])
-			)
+			!desk_assistant._is_table_start(lines, i) &&
+			!desk_assistant._heading_match(lines[i]) &&
+			!desk_assistant._is_hr(lines[i]) &&
+			!desk_assistant._is_ul(lines[i]) &&
+			!desk_assistant._is_ol(lines[i])
 		) {
 			chunk.push(lines[i]);
 			i += 1;
@@ -505,15 +734,245 @@ desk_assistant.format_reply = function (text) {
 	return out.join("\n");
 };
 
+desk_assistant.format_reply = function (text, opts) {
+	const live = !!(opts && opts.live);
+	const src = String(text || "");
+	if (live) {
+		return desk_assistant.format_markdown(
+			desk_assistant.linkify_docs(desk_assistant.strip_chart_fences(src))
+		);
+	}
+	const parts = [];
+	const re = /```chart[^\n]*\n([\s\S]*?)```/g;
+	let last = 0;
+	let match;
+	while ((match = re.exec(src))) {
+		if (match.index > last) {
+			parts.push({ kind: "md", text: src.slice(last, match.index) });
+		}
+		parts.push({ kind: "chart", json: match[1] });
+		last = match.index + match[0].length;
+	}
+	if (last < src.length) {
+		parts.push({ kind: "md", text: src.slice(last) });
+	}
+	if (!parts.length) {
+		return desk_assistant.format_markdown(desk_assistant.linkify_docs(src));
+	}
+	return parts
+		.map(function (part) {
+			if (part.kind === "chart") {
+				const spec = desk_assistant.normalize_chart_spec(part.json);
+				return spec ? desk_assistant.chart_placeholder(spec) : "";
+			}
+			return desk_assistant.format_markdown(desk_assistant.linkify_docs(part.text));
+		})
+		.join("\n");
+};
+
+desk_assistant.CHART_COLORS = ["#2490ef", "#7cd6fd", "#5e64ff", "#743ee2", "#ffa00a"];
+
+desk_assistant.chart_height = function (el, spec) {
+	const w = Math.max(240, el.clientWidth || el.offsetWidth || 280);
+	if (spec.type === "pie" || spec.type === "donut") {
+		return Math.round(Math.min(360, Math.max(280, w * 0.85)));
+	}
+	return Math.round(Math.min(280, Math.max(220, w * 0.55)));
+};
+
+desk_assistant.chart_legend = function (spec) {
+	const wrap = document.createElement("div");
+	wrap.className = "desk-assistant-chart-legend";
+	spec.labels.forEach(function (label, i) {
+		const item = document.createElement("div");
+		item.className = "desk-assistant-chart-legend-item";
+		const swatch = document.createElement("span");
+		swatch.className = "desk-assistant-chart-swatch";
+		swatch.style.background = desk_assistant.CHART_COLORS[i % desk_assistant.CHART_COLORS.length];
+		const name = document.createElement("span");
+		name.className = "desk-assistant-chart-legend-label";
+		name.textContent = label;
+		const val = document.createElement("span");
+		val.className = "desk-assistant-chart-legend-val";
+		val.textContent = Number(spec.values[i]).toLocaleString();
+		item.appendChild(swatch);
+		item.appendChild(name);
+		item.appendChild(val);
+		wrap.appendChild(item);
+	});
+	return wrap;
+};
+
+desk_assistant.unmount_chart = function (el) {
+	if (el && el._daChart && typeof el._daChart.destroy === "function") {
+		try {
+			el._daChart.destroy();
+		} catch (e) {
+			// ignore
+		}
+	}
+	if (el) {
+		el._daChart = null;
+		el.removeAttribute("data-mounted");
+	}
+};
+
+desk_assistant.chart_needs_mount = function (el, force) {
+	if (!el) {
+		return false;
+	}
+	if (force || !el.getAttribute("data-mounted")) {
+		return true;
+	}
+	const svg = el.querySelector("svg");
+	if (!svg) {
+		return true;
+	}
+	const box = svg.getBoundingClientRect();
+	if (box.height < 48) {
+		return true;
+	}
+	const avail = el.clientWidth || el.offsetWidth;
+	return avail > 80 && box.width < avail * 0.75;
+};
+
+desk_assistant.schedule_charts = function (force) {
+	desk_assistant._chart_force = !!(force || desk_assistant._chart_force);
+	if (desk_assistant._chart_frame) {
+		return;
+	}
+	desk_assistant._chart_frame = requestAnimationFrame(function () {
+		desk_assistant._chart_frame = null;
+		const force_now = desk_assistant._chart_force;
+		desk_assistant._chart_force = false;
+		desk_assistant.mount_charts($("#desk-assistant-messages"), force_now);
+	});
+};
+
+desk_assistant.mount_charts = function ($root, force) {
+	if (!$root || !frappe.Chart) {
+		return;
+	}
+	let retry = false;
+	$root.find(".desk-assistant-chart").each(function () {
+		const el = this;
+		if (!el.offsetWidth) {
+			retry = true;
+			return;
+		}
+		if (!desk_assistant.chart_needs_mount(el, force)) {
+			return;
+		}
+		let spec = null;
+		try {
+			spec = desk_assistant.normalize_chart_spec(
+				JSON.parse(decodeURIComponent(el.getAttribute("data-spec") || ""))
+			);
+		} catch (e) {
+			return;
+		}
+		if (!spec) {
+			return;
+		}
+		desk_assistant.unmount_chart(el);
+		const pie = spec.type === "pie" || spec.type === "donut";
+		el.innerHTML = "";
+		if (spec.title) {
+			const title = document.createElement("div");
+			title.className = "desk-assistant-chart-title";
+			title.textContent = spec.title;
+			el.appendChild(title);
+		}
+		const host = document.createElement("div");
+		host.className = "desk-assistant-chart-host";
+		el.appendChild(host);
+		const draw_w = Math.max(el.clientWidth || 0, 240);
+		host.style.width = draw_w + "px";
+		const args = {
+			title: "",
+			data: {
+				labels: spec.labels,
+				datasets: [{ name: spec.title || " ", values: spec.values }],
+			},
+			type: spec.type,
+			height: desk_assistant.chart_height(el, spec),
+			colors: desk_assistant.CHART_COLORS,
+			isNavigable: false,
+			showLegend: false,
+			truncateLegends: true,
+			tooltipOptions: {
+				formatTooltipX: function (d) {
+					return d;
+				},
+				formatTooltipY: function (d) {
+					return typeof d === "number" ? d.toLocaleString() : d;
+				},
+			},
+		};
+		if (spec.type === "bar" || spec.type === "line") {
+			args.axisOptions = { xAxisMode: "tick", shortenYAxisNumbers: 1 };
+			args.barOptions = { spaceRatio: spec.labels.length > 8 ? 0.45 : 0.3 };
+			args.lineOptions = { hideDots: spec.labels.length > 8, regionFill: 1 };
+		}
+		try {
+			el._daChart = new frappe.Chart(host, args);
+			if (pie) {
+				el.appendChild(desk_assistant.chart_legend(spec));
+			}
+			el.setAttribute("data-mounted", "1");
+			if (host.offsetWidth < 40) {
+				retry = true;
+			}
+		} catch (err) {
+			desk_assistant.unmount_chart(el);
+			retry = true;
+		}
+	});
+	if (retry) {
+		desk_assistant._chart_retries = (desk_assistant._chart_retries || 0) + 1;
+		if (desk_assistant._chart_retries > 8) {
+			return;
+		}
+		clearTimeout(desk_assistant._chart_retry);
+		desk_assistant._chart_retry = setTimeout(function () {
+			desk_assistant.mount_charts($("#desk-assistant-messages"), true);
+		}, 120);
+	} else {
+		desk_assistant._chart_retries = 0;
+	}
+	desk_assistant.schedule_scroll();
+};
+
+desk_assistant.add_copy_button = function ($el, text) {
+	$el.find(".desk-assistant-copy").remove();
+	const $btn = $("<button type='button'>")
+		.addClass("desk-assistant-copy btn btn-xs btn-default")
+		.text(__("Copy"))
+		.attr("title", __("Copy"))
+		.on("click", function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			frappe.utils.copy_to_clipboard(text || "");
+		});
+	$el.append($btn);
+};
+
+desk_assistant.paint_assistant = function ($el, text) {
+	const body = text || "";
+	$el.html(desk_assistant.format_reply(body));
+	desk_assistant.add_copy_button($el, body);
+	desk_assistant.schedule_charts();
+};
+
 desk_assistant.append_bubble = function (role, text) {
 	desk_assistant.clear_empty();
 	const $el = $("<div>").addClass("desk-assistant-bubble " + role);
+	$el.appendTo("#desk-assistant-messages");
 	if (role === "assistant") {
-		$el.html(desk_assistant.format_reply(text || ""));
+		desk_assistant.paint_assistant($el, text || "");
 	} else {
 		$el.text(text || "");
 	}
-	$el.appendTo("#desk-assistant-messages");
 	desk_assistant.scroll_messages();
 	return $el;
 };
@@ -523,6 +982,15 @@ desk_assistant.scroll_messages = function () {
 	if (box) {
 		box.scrollTop = box.scrollHeight;
 	}
+};
+
+desk_assistant.schedule_scroll = function () {
+	desk_assistant.scroll_messages();
+	requestAnimationFrame(function () {
+		desk_assistant.scroll_messages();
+		setTimeout(desk_assistant.scroll_messages, 80);
+		setTimeout(desk_assistant.scroll_messages, 280);
+	});
 };
 
 desk_assistant.set_busy = function (busy) {
@@ -592,7 +1060,7 @@ desk_assistant.render_stream_body = function () {
 	desk_assistant._$stream.find(".desk-assistant-status").hide();
 	desk_assistant._$stream
 		.find(".desk-assistant-stream-body")
-		.html(desk_assistant.format_reply(desk_assistant._stream_text));
+		.html(desk_assistant.format_reply(desk_assistant._stream_text, { live: true }));
 	desk_assistant.scroll_messages();
 };
 
@@ -670,7 +1138,9 @@ desk_assistant.finish_stream_bubble = function (text) {
 	$el.find(".desk-assistant-status").remove();
 	const body = text != null ? text : desk_assistant._stream_text || "";
 	$el.find(".desk-assistant-stream-body").html(desk_assistant.format_reply(body));
-	desk_assistant.scroll_messages();
+	desk_assistant.add_copy_button($el, body);
+	desk_assistant.schedule_charts(true);
+	desk_assistant.schedule_scroll();
 };
 
 desk_assistant.apply_stream_event = function (event) {
@@ -703,6 +1173,7 @@ desk_assistant.apply_stream_event = function (event) {
 		return;
 	}
 	if (event.type === "done") {
+		desk_assistant.merge_citations(event.citations);
 		desk_assistant._pending_finish = {
 			text: event.message || desk_assistant._stream_text || "",
 			session: event.session,
@@ -752,6 +1223,7 @@ desk_assistant.send_full = function (text) {
 			if (r.message && r.message.session) {
 				desk_assistant.session = r.message.session;
 			}
+			desk_assistant.merge_citations(r.message && r.message.citations);
 			desk_assistant.append_bubble("assistant", msg);
 			if (r.message && (r.message.provider || r.message.model)) {
 				frappe.boot.desk_assistant = Object.assign({}, desk_assistant.boot(), {
@@ -898,6 +1370,8 @@ desk_assistant.apply_session = function (data) {
 	const payload = data || {};
 	desk_assistant.session = payload.session || null;
 	desk_assistant.session_title = payload.title || "";
+	desk_assistant._doc_links = {};
+	desk_assistant.merge_citations(payload.citations);
 	const rows = payload.messages || [];
 	if (!rows.length) {
 		$("#desk-assistant-messages").html(
@@ -910,6 +1384,8 @@ desk_assistant.apply_session = function (data) {
 	rows.forEach(function (row) {
 		desk_assistant.append_bubble(row.role, row.content || "");
 	});
+	desk_assistant.schedule_charts(true);
+	desk_assistant.schedule_scroll();
 	desk_assistant.update_context();
 };
 
@@ -1287,6 +1763,14 @@ desk_assistant.bind = function () {
 
 	desk_assistant.bind_resize($panel.find(".desk-assistant-handle"));
 
+	$("#desk-assistant-messages").on("click", "a[href^='/desk/'], a[href^='/app/']", function (e) {
+		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.which === 2) {
+			return;
+		}
+		e.preventDefault();
+		desk_assistant.open_desk_path(this.getAttribute("href") || "");
+	});
+
 	if (frappe.router && frappe.router.on) {
 		frappe.router.on("change", function () {
 			try {
@@ -1320,6 +1804,7 @@ desk_assistant.bind_resize = function ($handle) {
 	const on_up = function () {
 		$("body").removeClass("desk-assistant-resizing");
 		$(document).off("mousemove.desk_assistant mouseup.desk_assistant");
+		desk_assistant.schedule_charts(true);
 	};
 	$handle.on("mousedown", function (e) {
 		e.preventDefault();

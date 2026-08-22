@@ -25,6 +25,21 @@ class TestGetDocStripsPassword(FrappeTestCase):
 		self.assertEqual(out.get("error"), "blocked")
 		self.assertNotIn("doc", out)
 
+	def test_blocked_email_account_is_not_loaded(self):
+		out = get_doc_run({"doctype": "Email Account", "name": "anything"})
+		self.assertEqual(out.get("error"), "blocked")
+		self.assertNotIn("doc", out)
+
+	def test_permission_denied_without_read(self):
+		from desk_assistant.tests.users import ensure_user
+
+		email = "da.slice6.noinvoice@example.com"
+		ensure_user(email, ["AI Assistant User"])
+		frappe.set_user(email)
+		out = get_doc_run({"doctype": "ToDo", "name": "does-not-exist-or-denied"})
+		self.assertIn(out.get("error"), ("permission_denied", "not_found"))
+		self.assertNotIn("doc", out)
+
 	def test_get_me_is_session_user_only(self):
 		from desk_assistant.tools.get_me import run as get_me_run
 

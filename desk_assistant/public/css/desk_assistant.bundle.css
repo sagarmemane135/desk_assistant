@@ -201,6 +201,25 @@ body.desk-assistant-resizing .desk-assistant-handle {
 	color: var(--text-color);
 }
 
+.desk-assistant-bubble.assistant.is-streaming .desk-assistant-stream-body::after {
+	content: "▍";
+	display: inline;
+	margin-left: 1px;
+	animation: da-caret 1s step-end infinite;
+}
+
+@keyframes da-caret {
+	50% {
+		opacity: 0;
+	}
+}
+
+.desk-assistant-status {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-bottom: 6px;
+}
+
 .desk-assistant-bubble.assistant a {
 	color: var(--primary, #2490ef);
 	text-decoration: underline;

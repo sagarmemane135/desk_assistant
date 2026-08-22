@@ -32,6 +32,60 @@ def post_json(url: str, headers: dict, payload: dict, timeout: int = 60) -> dict
 	return _read_json(req, timeout)
 
 
+def iter_sse(url: str, headers: dict, payload: dict, timeout: int = 120):
+	"""Yield JSON objects from an SSE POST. Never log headers."""
+	body = json.dumps(payload).encode("utf-8")
+	req = urllib.request.Request(url, data=body, method="POST")
+	req.add_header("Content-Type", "application/json")
+	req.add_header("Accept", "text/event-stream")
+	for key, value in headers.items():
+		req.add_header(key, value)
+	try:
+		resp = urllib.request.urlopen(req, timeout=timeout)
+	except urllib.error.HTTPError as exc:
+		err_body = _drain(exc)[:1500]
+		raise ProviderHTTPError(exc.code, _public_http_error(exc.code, err_body)) from None
+	except urllib.error.URLError:
+		raise ProviderHTTPError(0, _("Could not reach the provider.")) from None
+	except TimeoutError:
+		raise ProviderHTTPError(0, _("The provider timed out.")) from None
+	try:
+		for raw in _iter_response_lines(resp):
+			line = raw.decode("utf-8", errors="replace").strip()
+			if not line or line.startswith(":"):
+				continue
+			if line.startswith("event:"):
+				continue
+			if not line.startswith("data:"):
+				continue
+			data = line[5:].strip()
+			if data == "[DONE]":
+				break
+			try:
+				parsed = json.loads(data)
+			except json.JSONDecodeError:
+				continue
+			if isinstance(parsed, dict):
+				yield parsed
+	finally:
+		resp.close()
+
+
+def _iter_response_lines(resp):
+	"""Yield SSE lines as they arrive. Avoid readline() fill-buffer waits."""
+	buf = b""
+	while True:
+		chunk = resp.read1(1024) if hasattr(resp, "read1") else resp.readline()
+		if not chunk:
+			if buf:
+				yield buf
+			break
+		buf += chunk
+		while b"\n" in buf:
+			line, buf = buf.split(b"\n", 1)
+			yield line + b"\n"
+
+
 def _read_json(req: urllib.request.Request, timeout: int, retries: int = MAX_RETRIES) -> dict:
 	try:
 		with urllib.request.urlopen(req, timeout=timeout) as resp:

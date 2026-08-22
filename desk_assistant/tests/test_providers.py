@@ -158,6 +158,41 @@ class TestProviders(FrappeTestCase):
 		self.assertEqual(result.tool_calls[0]["arguments"]["doctype"], "ToDo")
 		self.assertIn("tools", post.call_args[0][2])
 
+	def test_openai_stream_keeps_chunk_whitespace(self):
+		from desk_assistant.providers.openai import iter_complete
+
+		cfg = LLMConfig(
+			provider="openai",
+			model="gpt-4o",
+			api_key="sk-test",
+			base_url="https://api.openai.com/v1",
+			max_tokens=256,
+			source="user",
+		)
+		events = [
+			{"choices": [{"delta": {"content": " Hel"}}]},
+			{"choices": [{"delta": {"content": "lo"}}]},
+			{"choices": [{"delta": {}}], "usage": {"prompt_tokens": 1, "completion_tokens": 2}},
+		]
+		with patch("desk_assistant.providers.openai.iter_sse", return_value=iter(events)):
+			items = list(iter_complete(cfg, [{"role": "user", "content": "hi"}]))
+		self.assertEqual(items[:-1], [" Hel", "lo"])
+		self.assertEqual(items[-1].text, "Hello")
+		self.assertEqual(items[-1].token_out, 2)
+
+	def test_sse_lines_split_across_reads(self):
+		from desk_assistant.providers.http import _iter_response_lines
+
+		class Fake:
+			def __init__(self):
+				self.parts = [b'data: {"a":', b'1}\n', b"data: [DONE]\n"]
+
+			def read1(self, _n):
+				return self.parts.pop(0) if self.parts else b""
+
+		lines = list(_iter_response_lines(Fake()))
+		self.assertEqual(lines[0], b'data: {"a":1}\n')
+
 	def test_gpt5_uses_max_completion_tokens(self):
 		cfg = LLMConfig(
 			provider="openai",

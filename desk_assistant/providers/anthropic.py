@@ -4,7 +4,7 @@
 from frappe import _
 
 from desk_assistant.providers.base import Completion, LLMConfig, ProviderError
-from desk_assistant.providers.http import post_json
+from desk_assistant.providers.http import iter_sse, post_json
 from desk_assistant.providers.toolfmt import anthropic_tools, parse_arguments
 
 ANTHROPIC_VERSION = "2023-06-01"
@@ -15,6 +15,7 @@ def complete(
 	messages: list[dict],
 	system: str | None = None,
 	tools: list[dict] | None = None,
+	on_delta=None,
 ) -> Completion:
 	url = f"{config.base_url}/v1/messages"
 	payload = {
@@ -31,8 +32,85 @@ def complete(
 		"x-api-key": config.api_key,
 		"anthropic-version": ANTHROPIC_VERSION,
 	}
+	if on_delta:
+		payload["stream"] = True
+		result = None
+		for item in _iter_parsed_stream(iter_sse(url, headers, payload)):
+			if isinstance(item, Completion):
+				result = item
+			else:
+				on_delta(item)
+		return result
 	data = post_json(url, headers, payload)
 	return _parse_completion(data)
+
+
+def iter_complete(
+	config: LLMConfig,
+	messages: list[dict],
+	system: str | None = None,
+	tools: list[dict] | None = None,
+):
+	url = f"{config.base_url}/v1/messages"
+	payload = {
+		"model": config.model,
+		"max_tokens": config.max_tokens,
+		"messages": _anthropic_messages(messages),
+		"stream": True,
+	}
+	if system:
+		payload["system"] = system
+	formatted = anthropic_tools(tools)
+	if formatted:
+		payload["tools"] = formatted
+	headers = {
+		"x-api-key": config.api_key,
+		"anthropic-version": ANTHROPIC_VERSION,
+	}
+	yield from _iter_parsed_stream(iter_sse(url, headers, payload))
+
+
+def _iter_parsed_stream(events):
+	parts = []
+	tool_calls = []
+	usage = {}
+	current_tool = None
+	for event in events:
+		kind = event.get("type")
+		if kind == "content_block_start":
+			block = event.get("content_block") or {}
+			if block.get("type") == "tool_use":
+				current_tool = {
+					"id": block.get("id") or "",
+					"name": block.get("name") or "",
+					"arguments": "",
+				}
+		elif kind == "content_block_delta":
+			delta = event.get("delta") or {}
+			if delta.get("type") == "text_delta" and delta.get("text"):
+				parts.append(delta["text"])
+				yield delta["text"]
+			elif delta.get("type") == "input_json_delta" and current_tool is not None:
+				current_tool["arguments"] += delta.get("partial_json") or ""
+		elif kind == "content_block_stop":
+			if current_tool and current_tool.get("name"):
+				current_tool["arguments"] = parse_arguments(current_tool.get("arguments"))
+				tool_calls.append(current_tool)
+			current_tool = None
+		elif kind == "message_delta":
+			usage.update(event.get("usage") or {})
+		elif kind == "message_start":
+			msg = event.get("message") or {}
+			usage.update(msg.get("usage") or {})
+	text = "".join(parts).strip()
+	if not text and not tool_calls:
+		raise ProviderError(_("The provider returned an empty message."))
+	yield Completion(
+		text=text,
+		token_in=int(usage.get("input_tokens") or 0),
+		token_out=int(usage.get("output_tokens") or 0),
+		tool_calls=tool_calls or None,
+	)
 
 
 def _anthropic_messages(messages: list[dict]) -> list[dict]:

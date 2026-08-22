@@ -7,7 +7,9 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from desk_assistant.providers.base import Completion, LLMConfig
+from desk_assistant.tests.users import ensure_user
 from desk_assistant.tools import query as query_tool
+from desk_assistant.tools.get_doc import run as get_doc_run
 
 
 class TestQueryTool(FrappeTestCase):
@@ -68,6 +70,84 @@ class TestQueryTool(FrappeTestCase):
 			query_tool.run({"doctype": "ToDo", "fields": ["name"], "limit": 100})
 		self.assertEqual(inst.execute.call_args.kwargs["limit"], 6)
 
+	def test_blocks_more_secret_doctypes(self):
+		for doctype in ("Has Role", "Error Log", "Email Account", "AI Assistant Settings"):
+			out = query_tool.run({"doctype": doctype, "fields": ["name"], "limit": 1})
+			self.assertEqual(out.get("error"), "blocked", doctype)
+			self.assertNotIn("rows", out)
+
+	def test_allowlist_rejects_other_doctypes(self):
+		settings = frappe.get_single("AI Assistant Settings")
+		before = [row.doc_type for row in (settings.allowed_doctypes or [])]
+		settings.set("allowed_doctypes", [])
+		settings.append("allowed_doctypes", {"doc_type": "ToDo"})
+		settings.save(ignore_permissions=True)
+		try:
+			ok = query_tool.run({"doctype": "ToDo", "fields": ["name"], "limit": 1})
+			self.assertNotEqual(ok.get("error"), "not_allowed")
+			denied = query_tool.run({"doctype": "File", "fields": ["name"], "limit": 1})
+			self.assertEqual(denied.get("error"), "not_allowed")
+			self.assertNotIn("rows", denied)
+		finally:
+			settings = frappe.get_single("AI Assistant Settings")
+			settings.set("allowed_doctypes", [])
+			for name in before:
+				settings.append("allowed_doctypes", {"doc_type": name})
+			settings.save(ignore_permissions=True)
+
+	def test_calendar_2023_sales_invoices_include_desk_path(self):
+		if not frappe.db.exists("DocType", "Sales Invoice"):
+			self.skipTest("ERPNext Sales Invoice is not installed")
+		out = query_tool.run(
+			{
+				"doctype": "Sales Invoice",
+				"fields": ["name", "customer", "grand_total", "posting_date"],
+				"filters": [
+					["posting_date", "between", ["2023-01-01", "2023-12-31"]],
+					["docstatus", "=", 1],
+				],
+				"order_by": "grand_total desc",
+				"limit": 5,
+			}
+		)
+		self.assertNotIn(out.get("error"), ("blocked", "permission_denied"))
+		self.assertIn("rows", out)
+		self.assertLessEqual(len(out["rows"]), 5)
+		for row in out["rows"]:
+			self.assertTrue(str(row.get("desk_path") or "").startswith("/desk/"))
+			posting = str(row.get("posting_date") or "")
+			if posting:
+				self.assertTrue(posting.startswith("2023"))
+
+	def test_user_without_sales_invoice_read_gets_permission_denied(self):
+		if not frappe.db.exists("DocType", "Sales Invoice"):
+			self.skipTest("ERPNext Sales Invoice is not installed")
+		email = "da.slice6.noinvoice@example.com"
+		ensure_user(email, ["AI Assistant User"])
+		frappe.db.set_single_value("AI Assistant Settings", "enabled", 1)
+		frappe.set_user(email)
+		self.assertFalse(frappe.has_permission("Sales Invoice", "read"))
+		out = query_tool.run(
+			{
+				"doctype": "Sales Invoice",
+				"fields": ["name", "grand_total", "posting_date"],
+				"filters": [
+					["posting_date", "between", ["2023-01-01", "2023-12-31"]],
+					["docstatus", "=", 1],
+				],
+				"order_by": "grand_total desc",
+				"limit": 5,
+			}
+		)
+		self.assertEqual(out.get("error"), "permission_denied")
+		self.assertEqual(out.get("doctype"), "Sales Invoice")
+		self.assertNotIn("rows", out)
+		invoice = frappe.db.get_value("Sales Invoice", {"docstatus": 1}, "name")
+		if invoice:
+			doc = get_doc_run({"doctype": "Sales Invoice", "name": invoice})
+			self.assertEqual(doc.get("error"), "permission_denied")
+			self.assertNotIn("doc", doc)
+
 	def test_agent_runs_query_then_answers(self):
 		from desk_assistant.agent import run_agent
 
@@ -99,3 +179,33 @@ class TestQueryTool(FrappeTestCase):
 		self.assertEqual(roles[-1], "tool")
 		self.assertIn("call_1", second_messages[-1]["tool_call_id"])
 		self.assertTrue(complete.call_args_list[0].kwargs.get("tools"))
+
+	def test_iter_agent_yields_token_deltas(self):
+		from desk_assistant.agent import iter_agent
+		from desk_assistant.providers.base import Completion, LLMConfig
+
+		cfg = LLMConfig(
+			provider="openai",
+			model="gpt-4o",
+			api_key="sk-test",
+			base_url="https://api.openai.com/v1",
+			max_tokens=256,
+			source="user",
+		)
+
+		def fake_iter(*args, **kwargs):
+			yield "Hel"
+			yield "lo "
+			yield "there"
+			yield Completion(text="Hello there")
+
+		with (
+			patch("desk_assistant.agent.complete_chat") as non_stream,
+			patch("desk_assistant.agent.complete_chat_iter", side_effect=lambda *a, **k: fake_iter()),
+		):
+			events = list(iter_agent(cfg, "hi", "sys", use_tools=True, stream=True))
+		non_stream.assert_not_called()
+		deltas = [e["text"] for e in events if e.get("type") == "delta"]
+		self.assertEqual(deltas, ["Hel", "lo ", "there"])
+		self.assertEqual(events[-1]["type"], "done")
+		self.assertEqual(events[-1]["result"]["text"], "Hello there")

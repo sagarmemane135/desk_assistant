@@ -10,6 +10,7 @@ def complete(
 	messages: list[dict],
 	system: str | None = None,
 	tools: list[dict] | None = None,
+	on_delta=None,
 ) -> Completion:
 	"""OpenRouter, Ollama, Azure-compatible, Groq, vLLM — Chat Completions shape."""
 	extra = None
@@ -18,4 +19,6 @@ def complete(
 			"HTTP-Referer": "https://frappe.io",
 			"X-Title": "Desk Assistant",
 		}
-	return openai_complete(config, messages, system=system, extra_headers=extra, tools=tools)
+	return openai_complete(
+		config, messages, system=system, extra_headers=extra, tools=tools, on_delta=on_delta
+	)

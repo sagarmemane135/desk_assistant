@@ -248,6 +248,7 @@ desk_assistant.inject = function (width, collapsed) {
 				<textarea id="desk-assistant-input" rows="3" placeholder="${__("Ask about invoices, stock, customers…")}"></textarea>
 				<div class="desk-assistant-footer-actions">
 					<button type="button" class="btn btn-default btn-sm da-clear">${__("New")}</button>
+					<button type="button" class="btn btn-default btn-sm da-stop" hidden>${__("Stop")}</button>
 					<button type="button" class="btn btn-primary btn-sm da-send">${__("Send")}</button>
 				</div>
 			</div>
@@ -365,6 +366,14 @@ desk_assistant.error_text = function (r) {
 		return r.message;
 	}
 	return __("Could not send. Check your key in User AI Settings.");
+};
+
+desk_assistant.parse_json_silent = function (raw) {
+	try {
+		return JSON.parse(raw || "");
+	} catch (e) {
+		return {};
+	}
 };
 
 desk_assistant.server_message = function (json) {
@@ -505,13 +514,216 @@ desk_assistant.append_bubble = function (role, text) {
 		$el.text(text || "");
 	}
 	$el.appendTo("#desk-assistant-messages");
+	desk_assistant.scroll_messages();
+	return $el;
+};
+
+desk_assistant.scroll_messages = function () {
 	const box = document.getElementById("desk-assistant-messages");
 	if (box) {
 		box.scrollTop = box.scrollHeight;
 	}
 };
 
+desk_assistant.set_busy = function (busy) {
+	desk_assistant._busy = !!busy;
+	$(".da-send").prop("disabled", !!busy);
+	$(".da-stop").prop("hidden", !busy);
+	$("#desk-assistant-input").prop("disabled", !!busy);
+};
+
+desk_assistant.end_busy = function () {
+	desk_assistant.set_busy(false);
+	$("#desk-assistant-input").trigger("focus");
+};
+
+desk_assistant.stop = function () {
+	desk_assistant.flush_typewriter();
+	if (desk_assistant._abort) {
+		desk_assistant._abort.abort();
+	}
+};
+
+desk_assistant.reset_typewriter = function () {
+	if (desk_assistant._type_timer) {
+		clearTimeout(desk_assistant._type_timer);
+		desk_assistant._type_timer = null;
+	}
+	desk_assistant._type_queue = "";
+	desk_assistant._pending_finish = null;
+};
+
+desk_assistant.flush_typewriter = function () {
+	if (desk_assistant._type_queue) {
+		desk_assistant._stream_text += desk_assistant._type_queue;
+		desk_assistant._type_queue = "";
+		desk_assistant.render_stream_body();
+	}
+	if (desk_assistant._type_timer) {
+		clearTimeout(desk_assistant._type_timer);
+		desk_assistant._type_timer = null;
+	}
+};
+
+desk_assistant.type_slice_len = function (q) {
+	if (!q) {
+		return 0;
+	}
+	const cap = q.length > 800 ? 28 : q.length > 280 ? 14 : 8;
+	if (q.length <= cap) {
+		return q.length;
+	}
+	const ws = q.match(/^\s+/);
+	if (ws) {
+		return Math.min(ws[0].length, 4);
+	}
+	const word = q.match(new RegExp("^[^\\s]{1," + cap + "}"));
+	let n = word ? word[0].length : cap;
+	if (q.charAt(n) === " ") {
+		n += 1;
+	}
+	return n;
+};
+
+desk_assistant.render_stream_body = function () {
+	if (!desk_assistant._$stream) {
+		return;
+	}
+	desk_assistant._$stream.find(".desk-assistant-status").hide();
+	desk_assistant._$stream
+		.find(".desk-assistant-stream-body")
+		.html(desk_assistant.format_reply(desk_assistant._stream_text));
+	desk_assistant.scroll_messages();
+};
+
+desk_assistant.pump_type = function () {
+	if (desk_assistant._type_timer) {
+		return;
+	}
+	const tick = function () {
+		desk_assistant._type_timer = null;
+		const q = desk_assistant._type_queue || "";
+		if (!q) {
+			desk_assistant.finish_typed();
+			return;
+		}
+		const n = desk_assistant.type_slice_len(q);
+		desk_assistant._type_queue = q.slice(n);
+		desk_assistant._stream_text += q.slice(0, n);
+		desk_assistant.render_stream_body();
+		const delay = q.length > 400 ? 8 : 16;
+		desk_assistant._type_timer = setTimeout(tick, delay);
+	};
+	tick();
+};
+
+desk_assistant.enqueue_type = function (text) {
+	desk_assistant._type_queue = (desk_assistant._type_queue || "") + (text || "");
+	desk_assistant.pump_type();
+};
+
+desk_assistant.finish_typed = function () {
+	const finish = desk_assistant._pending_finish;
+	if (!finish) {
+		return;
+	}
+	desk_assistant._pending_finish = null;
+	desk_assistant.reset_typewriter();
+	if (finish.session) {
+		desk_assistant.session = finish.session;
+	}
+	if (finish.provider || finish.model) {
+		frappe.boot.desk_assistant = Object.assign({}, desk_assistant.boot(), {
+			provider: finish.provider || desk_assistant.boot().provider,
+			model: finish.model || desk_assistant.boot().model,
+			has_api_key: true,
+		});
+		desk_assistant.refresh_header();
+	}
+	desk_assistant.finish_stream_bubble(finish.text || desk_assistant._stream_text || "");
+	desk_assistant.end_busy();
+};
+
+desk_assistant.begin_stream_bubble = function () {
+	desk_assistant.reset_typewriter();
+	desk_assistant.clear_empty();
+	desk_assistant._stream_text = "";
+	const $el = $("<div>").addClass("desk-assistant-bubble assistant is-streaming");
+	$el.append($("<div>").addClass("desk-assistant-status").hide());
+	$el.append($("<div>").addClass("desk-assistant-stream-body"));
+	$el.appendTo("#desk-assistant-messages");
+	desk_assistant._$stream = $el;
+	return $el;
+};
+
+desk_assistant.finish_stream_bubble = function (text) {
+	desk_assistant.reset_typewriter();
+	const $el = desk_assistant._$stream;
+	desk_assistant._$stream = null;
+	if (!$el || !$el.length) {
+		if (text) {
+			desk_assistant.append_bubble("assistant", text);
+		}
+		return;
+	}
+	$el.removeClass("is-streaming");
+	$el.find(".desk-assistant-status").remove();
+	const body = text != null ? text : desk_assistant._stream_text || "";
+	$el.find(".desk-assistant-stream-body").html(desk_assistant.format_reply(body));
+	desk_assistant.scroll_messages();
+};
+
+desk_assistant.apply_stream_event = function (event) {
+	if (!event || !event.type) {
+		return;
+	}
+	if (event.type === "session" && event.session) {
+		desk_assistant.session = event.session;
+		return;
+	}
+	if (event.type === "status") {
+		desk_assistant.reset_typewriter();
+		if (!desk_assistant._$stream) {
+			desk_assistant.begin_stream_bubble();
+		}
+		desk_assistant._stream_text = "";
+		desk_assistant._$stream.find(".desk-assistant-stream-body").empty();
+		desk_assistant._$stream
+			.find(".desk-assistant-status")
+			.text(event.text || "")
+			.show();
+		desk_assistant.scroll_messages();
+		return;
+	}
+	if (event.type === "delta") {
+		if (!desk_assistant._$stream) {
+			desk_assistant.begin_stream_bubble();
+		}
+		desk_assistant.enqueue_type(event.text || "");
+		return;
+	}
+	if (event.type === "done") {
+		desk_assistant._pending_finish = {
+			text: event.message || desk_assistant._stream_text || "",
+			session: event.session,
+			provider: event.provider,
+			model: event.model,
+		};
+		desk_assistant.pump_type();
+		return;
+	}
+	if (event.type === "error") {
+		desk_assistant.reset_typewriter();
+		desk_assistant.finish_stream_bubble(
+			event.message || __("Could not send. Check your key in User AI Settings.")
+		);
+	}
+};
+
 desk_assistant.send = function () {
+	if (desk_assistant._busy) {
+		return;
+	}
 	const $input = $("#desk-assistant-input");
 	const text = ($input.val() || "").trim();
 	if (!text) {
@@ -519,7 +731,15 @@ desk_assistant.send = function () {
 	}
 	$input.val("");
 	desk_assistant.append_bubble("user", text);
-	$(".da-send").prop("disabled", true);
+	if (window.fetch) {
+		desk_assistant.send_stream(text);
+	} else {
+		desk_assistant.send_full(text);
+	}
+};
+
+desk_assistant.send_full = function (text) {
+	desk_assistant.set_busy(true);
 	frappe.call({
 		method: "desk_assistant.api.chat.send",
 		args: {
@@ -528,8 +748,7 @@ desk_assistant.send = function () {
 			context: JSON.stringify(desk_assistant.get_context()),
 		},
 		callback: function (r) {
-			const msg =
-				(r.message && r.message.message) || __("No reply from the model.");
+			const msg = (r.message && r.message.message) || __("No reply from the model.");
 			if (r.message && r.message.session) {
 				desk_assistant.session = r.message.session;
 			}
@@ -542,14 +761,129 @@ desk_assistant.send = function () {
 				});
 				desk_assistant.refresh_header();
 			}
-			$(".da-send").prop("disabled", false);
+			desk_assistant.set_busy(false);
 			$("#desk-assistant-input").trigger("focus");
 		},
 		error: function (r) {
 			desk_assistant.append_bubble("assistant", desk_assistant.error_text(r));
-			$(".da-send").prop("disabled", false);
+			desk_assistant.set_busy(false);
 		},
 	});
+};
+
+desk_assistant.send_stream = function (text) {
+	desk_assistant.set_busy(true);
+	desk_assistant.begin_stream_bubble();
+	const controller = new AbortController();
+	desk_assistant._abort = controller;
+	let fallback = false;
+	const body = new URLSearchParams();
+	body.set("message", text);
+	body.set("session", desk_assistant.session || "");
+	body.set("context", JSON.stringify(desk_assistant.get_context()));
+	fetch("/api/method/desk_assistant.api.chat.stream", {
+		method: "POST",
+		credentials: "same-origin",
+		signal: controller.signal,
+		headers: {
+			Accept: "application/x-ndjson",
+			"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+			"X-Frappe-CSRF-Token": frappe.csrf_token || "",
+			"X-Requested-With": "XMLHttpRequest",
+		},
+		body: body.toString(),
+	})
+		.then(function (res) {
+			const ctype = (res.headers.get("content-type") || "").toLowerCase();
+			if (res.ok && ctype.indexOf("ndjson") !== -1) {
+				return desk_assistant.read_ndjson(res);
+			}
+			return res.text().then(function (raw) {
+				if (!res.ok && res.status !== 404) {
+					const parsed = desk_assistant.error_text({
+						responseJSON: desk_assistant.parse_json_silent(raw),
+						message: raw,
+					});
+					throw new Error(parsed);
+				}
+				const err = new Error("stream-fallback");
+				err._fallback = true;
+				throw err;
+			});
+		})
+		.catch(function (err) {
+			if (err && err.name === "AbortError") {
+				desk_assistant.flush_typewriter();
+				desk_assistant.finish_stream_bubble(desk_assistant._stream_text || __("Stopped."));
+				return;
+			}
+			if (err && err._fallback) {
+				fallback = true;
+				desk_assistant.send_full(text);
+				return;
+			}
+			const msg =
+				(err && err.message) || __("Could not send. Check your key in User AI Settings.");
+			desk_assistant.reset_typewriter();
+			if (desk_assistant._$stream) {
+				desk_assistant.finish_stream_bubble(msg);
+			} else {
+				desk_assistant.append_bubble("assistant", msg);
+			}
+		})
+		.finally(function () {
+			desk_assistant._abort = null;
+			if (fallback) {
+				return;
+			}
+			if (desk_assistant._type_queue || desk_assistant._pending_finish) {
+				return;
+			}
+			desk_assistant.end_busy();
+		});
+};
+
+desk_assistant.read_ndjson = function (res) {
+	const reader = res.body && res.body.getReader ? res.body.getReader() : null;
+	if (!reader) {
+		return res.text().then(function (raw) {
+			desk_assistant.consume_ndjson_chunk(raw, true);
+		});
+	}
+	const decoder = new TextDecoder();
+	let buf = "";
+	const pump = function () {
+		return reader.read().then(function (result) {
+			if (result.value) {
+				buf += decoder.decode(result.value, { stream: !result.done });
+			}
+			buf = desk_assistant.consume_ndjson_chunk(buf, !!result.done);
+			if (!result.done) {
+				return pump();
+			}
+		});
+	};
+	return pump();
+};
+
+desk_assistant.consume_ndjson_chunk = function (buf, flush) {
+	const parts = String(buf || "").split("\n");
+	const rest = flush ? "" : parts.pop();
+	if (flush && parts.length && parts[parts.length - 1] === "") {
+		parts.pop();
+	}
+	parts.forEach(function (line) {
+		const trimmed = line.trim();
+		if (!trimmed) {
+			return;
+		}
+		try {
+			desk_assistant.apply_stream_event(JSON.parse(trimmed));
+		} catch (e) {
+			console.error(e);
+		}
+	});
+	return rest || "";
 };
 
 desk_assistant.session_from_route = function () {
@@ -593,6 +927,7 @@ desk_assistant.restore_session = function () {
 };
 
 desk_assistant.start_new_chat = function () {
+	desk_assistant.stop();
 	frappe.call({
 		method: "desk_assistant.api.chat.new_session",
 		callback: function (r) {
@@ -936,6 +1271,9 @@ desk_assistant.bind = function () {
 	});
 	$panel.find(".da-clear").on("click", function () {
 		desk_assistant.start_new_chat();
+	});
+	$panel.find(".da-stop").on("click", function () {
+		desk_assistant.stop();
 	});
 	$panel.find(".da-send").on("click", function () {
 		desk_assistant.send();

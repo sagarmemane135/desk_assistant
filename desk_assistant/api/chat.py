@@ -5,8 +5,9 @@ import json
 
 import frappe
 from frappe import _
+from werkzeug.wrappers import Response
 
-from desk_assistant.agent import run_agent
+from desk_assistant.agent import iter_agent, run_agent
 from desk_assistant.permissions import (
 	assert_can_use_assistant,
 	user_can_use_assistant,
@@ -71,6 +72,76 @@ def send(message: str | None = None, session: str | None = None, context: str | 
 		"model": reply["model"],
 		"message": reply["text"],
 	}
+
+
+@frappe.whitelist(methods=["POST"])
+def stream(message: str | None = None, session: str | None = None, context: str | None = None):
+	"""NDJSON token stream. Tool rounds emit status; the final answer emits delta lines."""
+	assert_can_use_assistant()
+	text = (message or "").strip()
+	if not text:
+		frappe.throw(_("Type a message."))
+	session_name = ensure_session(session)
+	history = history_for_model(session_name)
+
+	def generate():
+		yield _ndjson({"type": "session", "session": session_name})
+		try:
+			config = resolve_llm_config(require_key=True)
+			for event in iter_agent(
+				config,
+				text,
+				_system_prompt(context),
+				use_tools=True,
+				history=history,
+				session=session_name,
+				stream=True,
+			):
+				if event.get("type") == "done":
+					reply = event["result"]
+					append_turn(
+						session_name,
+						text,
+						reply["text"],
+						provider=reply["provider"],
+						model=reply["model"],
+						tool_rows=reply.get("tool_rows"),
+					)
+					if not frappe.flags.in_test:
+						frappe.db.commit()
+					yield _ndjson(
+						{
+							"type": "done",
+							"session": session_name,
+							"provider": reply["provider"],
+							"model": reply["model"],
+							"message": reply["text"],
+						}
+					)
+				else:
+					yield _ndjson(event)
+		except ProviderError as exc:
+			yield _ndjson({"type": "error", "message": str(exc)[:240]})
+		except Exception:
+			frappe.log_error(title="Desk Assistant stream")
+			yield _ndjson({"type": "error", "message": _("Could not complete this reply.")})
+
+	response = Response(
+		generate(),
+		mimetype="application/x-ndjson",
+		headers={
+			"Cache-Control": "no-cache, no-store, no-transform",
+			"X-Accel-Buffering": "no",
+			"Content-Encoding": "identity",
+		},
+	)
+	response.implicit_sequence_conversion = False
+	response.automatically_set_content_length = False
+	return response
+
+
+def _ndjson(payload: dict) -> bytes:
+	return (json.dumps(payload, default=str) + "\n").encode("utf-8")
 
 
 @frappe.whitelist()

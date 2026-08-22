@@ -107,6 +107,56 @@ class TestSessions(FrappeTestCase):
 		other = [row["content"] for row in history if row.get("role") == "user"]
 		self.assertNotIn("what are my roles", other)
 
+	def test_stream_emits_ndjson_and_persists(self):
+		import json
+
+		from desk_assistant.api.chat import stream
+		from werkzeug.wrappers import Response
+
+		cfg = LLMConfig(
+			provider="openai",
+			model="gpt-4o",
+			api_key="sk-must-not-leak",
+			base_url="https://api.openai.com/v1",
+			max_tokens=256,
+			source="user",
+		)
+
+		def fake_iter(*args, **kwargs):
+			yield {"type": "status", "text": "Looking up Desk data…"}
+			yield {"type": "delta", "text": "Hel"}
+			yield {"type": "delta", "text": "lo"}
+			yield {
+				"type": "done",
+				"result": {
+					"text": "Hello",
+					"provider": "openai",
+					"model": "gpt-4o",
+					"tool_rows": [],
+				},
+			}
+
+		with (
+			patch("desk_assistant.api.chat.resolve_llm_config", return_value=cfg),
+			patch("desk_assistant.api.chat.iter_agent", side_effect=lambda *a, **k: fake_iter()),
+		):
+			resp = stream(message="ping")
+			self.assertIsInstance(resp, Response)
+			self.assertIn("ndjson", resp.mimetype or "")
+			body = b"".join(resp.iter_encoded()).decode()
+		self.assertNotIn("sk-must-not-leak", body)
+		rows = [json.loads(line) for line in body.strip().split("\n") if line.strip()]
+		types = [row["type"] for row in rows]
+		self.assertEqual(types[0], "session")
+		self.assertIn("status", types)
+		self.assertEqual(types[-1], "done")
+		self.assertEqual(rows[-1]["message"], "Hello")
+		session = rows[0]["session"]
+		doc = frappe.get_doc("AI Chat Session", session)
+		roles = [row.role for row in doc.messages]
+		self.assertEqual(roles[-2:], ["user", "assistant"])
+		self.assertEqual(doc.messages[-1].content, "Hello")
+
 	def test_tool_writes_audit_log(self):
 		from desk_assistant.audit import log_tool
 

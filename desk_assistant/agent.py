@@ -5,8 +5,8 @@ import json
 import time
 
 from desk_assistant.audit import log_tool
-from desk_assistant.providers import complete_chat
-from desk_assistant.providers.base import LLMConfig
+from desk_assistant.providers import complete_chat, complete_chat_iter
+from desk_assistant.providers.base import Completion, LLMConfig
 from desk_assistant.tools.guard import max_tool_rounds
 from desk_assistant.tools.runner import SCHEMAS, run_tool
 
@@ -20,7 +20,41 @@ def run_agent(
 	use_tools: bool = True,
 	history: list | None = None,
 	session: str | None = None,
+	on_event=None,
 ) -> dict:
+	result = {
+		"text": "",
+		"provider": config.provider,
+		"model": config.model,
+		"token_in": 0,
+		"token_out": 0,
+		"tool_rows": [],
+	}
+	for event in iter_agent(
+		config,
+		user_text,
+		system,
+		use_tools=use_tools,
+		history=history,
+		session=session,
+		stream=bool(on_event),
+	):
+		if on_event:
+			on_event(event)
+		if event.get("type") == "done":
+			result = event["result"]
+	return result
+
+
+def iter_agent(
+	config: LLMConfig,
+	user_text: str,
+	system: str | None,
+	use_tools: bool = True,
+	history: list | None = None,
+	session: str | None = None,
+	stream: bool = False,
+):
 	messages = _clean_history(history)
 	messages.append({"role": "user", "content": user_text})
 	tools = SCHEMAS if use_tools else None
@@ -31,7 +65,19 @@ def run_agent(
 
 	for step in range(rounds + 1):
 		round_tools = tools if step < rounds else None
-		result = complete_chat(config, messages, system=system, tools=round_tools)
+		result = None
+		if stream:
+			# Stream every round. The first call still offers tools, so a text
+			# answer (no tool_calls) must not wait for the "last" round.
+			for item in complete_chat_iter(config, messages, system=system, tools=round_tools):
+				if isinstance(item, Completion):
+					result = item
+				elif item:
+					yield {"type": "delta", "text": item}
+		else:
+			result = complete_chat(config, messages, system=system, tools=round_tools)
+		if result is None:
+			break
 		token_in += result.token_in
 		token_out += result.token_out
 		text = (result.text or "").strip()
@@ -48,6 +94,8 @@ def run_agent(
 		)
 		for call in calls:
 			started = time.monotonic()
+			if stream:
+				yield {"type": "status", "text": f"Running {call.get('name') or 'lookup'}…"}
 			payload = run_tool(call.get("name") or "", call.get("arguments"))
 			duration_ms = int((time.monotonic() - started) * 1000)
 			if session:
@@ -78,13 +126,18 @@ def run_agent(
 
 	if not text:
 		text = LIMIT_MESSAGE if use_tools else ""
-	return {
-		"text": text,
-		"provider": config.provider,
-		"model": config.model,
-		"token_in": token_in,
-		"token_out": token_out,
-		"tool_rows": logged,
+		if stream and text:
+			yield {"type": "delta", "text": text}
+	yield {
+		"type": "done",
+		"result": {
+			"text": text,
+			"provider": config.provider,
+			"model": config.model,
+			"token_in": token_in,
+			"token_out": token_out,
+			"tool_rows": logged,
+		},
 	}
 
 

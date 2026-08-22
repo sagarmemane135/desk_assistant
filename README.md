@@ -17,6 +17,8 @@ This is a Frappe app, not an MCP server. Chat stays inside Desk. The assistant i
 
 This app is built and tested on **Frappe v16** only (Frappe 16.30, Python 3.14). It is **not** tested on Frappe 14 or 15. Desk icons, workspace sidebar, and boot hooks target v16.
 
+Use the **`version-16`** branch on a Frappe v16 bench. Use **`develop`** for ongoing work (same code as `version-16` until a later Frappe version exists).
+
 | Need | Detail |
 |---|---|
 | **Frappe** | v16 bench and site. Required. |
@@ -35,14 +37,38 @@ No extra Python pip packages. Provider SDKs are not bundled; the app calls the H
 - A Frappe **v16** site on a matching bench
 - An API key for at least one supported provider (or a site-wide fallback key)
 
+## Branches
+
+Same layout as Frappe / ERPNext:
+
+| Branch | Use |
+|---|---|
+| **`develop`** | Default. New work and PRs go here. |
+| **`version-16`** | Stable line for **Frappe v16** sites. Install this on production v16. |
+
+New features land on `develop`. Fixes that must ship on v16 are merged (or cherry-picked) to `version-16`. There is no `version-14` / `version-15` line.
+
 ## Install
 
-Copy this app into your bench `apps` folder, or run `bench get-app` from your own git remote.
+Copy this app into your bench `apps` folder, or run `bench get-app` from your own git remote. Pin the branch to your Frappe version:
 
 ```bash
 cd /path/to/frappe-bench
 
-# Already on disk as apps/desk_assistant:
+# Frappe v16 site
+bench get-app <your-remote> --branch version-16
+bench --site your.site install-app desk_assistant
+```
+
+```bash
+# Ongoing development (Frappe v16 today)
+bench get-app <your-remote> --branch develop
+bench --site your.site install-app desk_assistant
+```
+
+If the app is already on disk as `apps/desk_assistant`:
+
+```bash
 bench --site your.site install-app desk_assistant
 ```
 

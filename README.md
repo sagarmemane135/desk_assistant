@@ -37,26 +37,24 @@ Replies stay **short prose** unless you ask for more. The assistant does not inv
 
 ## Compatibility
 
-This app is built and tested on **Frappe v16** only (Frappe 16.30, Python 3.14). It is **not** tested on Frappe 14 or 15. Desk icons, workspace sidebar, and boot hooks target v16.
-
-Use the **`version-16`** branch on a Frappe v16 bench. Use **`develop`** for ongoing work (same code as `version-16` until a later Frappe version exists).
+This **`version-15`** branch targets **Frappe v15** only. Desk lives at `/app` (not `/desk`). Do not install this branch on a Frappe 16 bench — use **`version-16`** or **`develop`** there.
 
 | Need | Detail |
 |---|---|
-| **Frappe** | v16 bench and site. Required. |
-| **Python** | **3.14** (same as Frappe 16: `>=3.14,<3.15`) |
+| **Frappe** | **v15** bench and site. Required. |
+| **Python** | **3.10–3.14** (same as Frappe 15: `>=3.10,<3.15`). No extra pip packages. |
 | **ERPNext** | **Optional.** Not in `required_apps`. Install ERPNext if you want Sales Invoice, stock, customers, and similar DocTypes. Without it, the sidebar still works on Frappe DocTypes the user can read (ToDo, etc.). |
 | **Other apps** | Optional. The assistant can query any DocType the signed-in user can already read (HR, custom apps, …). |
 | **Database / Redis** | Whatever that Frappe site already uses (MariaDB + Redis). No extra services. |
-| **Node** | Needed for `bench build` / `bench get-app` asset build. |
+| **Node** | Needed for `bench build` / `bench get-app` asset build (Frappe 15 uses Node 18/20). |
 | **Network** | Outbound HTTPS to the LLM provider (OpenAI, Anthropic, Google, Groq, OpenRouter). **Ollama** needs a reachable Ollama host. Keys stay on the server. |
 | **Browser** | Current Desk (desktop). Mobile layout is not in this version. |
 
-No extra Python pip packages. Provider SDKs are not bundled; the app calls the HTTP APIs.
+No extra Python pip packages. Provider SDKs are not bundled; the app calls the HTTP APIs (`requests` already comes with Frappe).
 
 ## Requirements
 
-- A Frappe **v16** site on a matching bench
+- A Frappe **v15** site on a matching bench (Python 3.10+)
 - An API key for at least one supported provider (or a site-wide fallback key)
 
 ## Branches
@@ -65,10 +63,11 @@ Same layout as Frappe / ERPNext:
 
 | Branch | Use |
 |---|---|
-| **`develop`** | Default. New work and PRs go here. |
-| **`version-16`** | Stable line for **Frappe v16** sites. Install this on production v16. |
+| **`version-15`** | This line. Install on **Frappe v15** sites. |
+| **`develop`** | Frappe **v16** work. Do not mix with this branch on the same bench. |
+| **`version-16`** | Stable line for **Frappe v16** sites. |
 
-New features land on `develop`. Fixes that must ship on v16 are merged (or cherry-picked) to `version-16`. There is no `version-14` / `version-15` line.
+New v15-only fixes land here. Features first land on `develop` (v16) and are ported here when they should ship on v15.
 
 ## Install
 
@@ -83,7 +82,13 @@ bench --site your.site install-app desk_assistant
 ```
 
 ```bash
-# Ongoing development (Frappe v16 today)
+# Frappe v15 site (this branch)
+bench get-app <your-remote> --branch version-15
+bench --site your.site install-app desk_assistant
+```
+
+```bash
+# Ongoing development (Frappe v16)
 bench get-app <your-remote> --branch develop
 bench --site your.site install-app desk_assistant
 ```

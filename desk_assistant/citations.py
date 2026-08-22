@@ -55,7 +55,7 @@ def _from_payload(raw) -> list[dict]:
 def _add(out: list[dict], name, path) -> None:
 	name = str(name or "").strip()
 	path = str(path or "").strip()
-	if not name or not path.startswith("/desk/"):
+	if not name or not (path.startswith("/app/") or path.startswith("/desk/")):
 		return
 	if len(name) < 2:
 		return

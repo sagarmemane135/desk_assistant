@@ -50,4 +50,4 @@ class TestGetDocStripsPassword(FrappeTestCase):
 		self.assertGreater(len(out["roles"]), 0)
 		self.assertNotIn("password", out)
 		self.assertNotIn("api_key", frappe.as_json(out))
-		self.assertTrue(out["desk_path"].startswith("/desk/user/"))
+		self.assertTrue(out["desk_path"].startswith("/app/user/"))

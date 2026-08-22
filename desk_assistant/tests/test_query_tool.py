@@ -58,7 +58,7 @@ class TestQueryTool(FrappeTestCase):
 		self.assertEqual(kwargs.get("user"), frappe.session.user)
 		self.assertEqual(kwargs.get("limit"), 2)
 		self.assertEqual(out["rows"][0]["name"], "TASK-1")
-		self.assertTrue(out["rows"][0]["desk_path"].startswith("/desk/todo/"))
+		self.assertTrue(out["rows"][0]["desk_path"].startswith("/app/todo/"))
 
 	def test_limit_capped_by_settings(self):
 		with (
@@ -114,7 +114,7 @@ class TestQueryTool(FrappeTestCase):
 		self.assertIn("rows", out)
 		self.assertLessEqual(len(out["rows"]), 5)
 		for row in out["rows"]:
-			self.assertTrue(str(row.get("desk_path") or "").startswith("/desk/"))
+			self.assertTrue(str(row.get("desk_path") or "").startswith("/app/"))
 			posting = str(row.get("posting_date") or "")
 			if posting:
 				self.assertTrue(posting.startswith("2023"))

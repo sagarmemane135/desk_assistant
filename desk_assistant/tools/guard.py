@@ -26,7 +26,13 @@ def guard_doctype(doctype: str, ptype: str = "read") -> dict | None:
 
 
 def desk_path(doctype: str, name: str) -> str:
-	return f"/desk/{quote(slug(doctype))}/{quote(str(name))}"
+	"""Frappe v15 Desk lives at /app (v16 uses /desk)."""
+	return f"/app/{quote(slug(doctype))}/{quote(str(name))}"
+
+
+def is_desk_href(path: str) -> bool:
+	path = (path or "").strip()
+	return path.startswith("/app/") or path.startswith("/desk/")
 
 
 def max_rows() -> int:

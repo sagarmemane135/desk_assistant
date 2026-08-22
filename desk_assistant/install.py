@@ -30,9 +30,9 @@ def ensure_roles():
 
 
 def ensure_nav_roles():
-	"""Granted users see the left Desk Assistant icon, not only managers."""
+	"""Granted users see the Desk Assistant workspace, not only managers."""
 	role = "AI Assistant User"
-	for doctype, name in (("Workspace", "Desk Assistant"), ("Desktop Icon", "Desk Assistant")):
+	for doctype, name in _nav_docs():
 		if not frappe.db.exists(doctype, name):
 			continue
 		if frappe.db.exists("Has Role", {"parenttype": doctype, "parent": name, "role": role}):
@@ -40,3 +40,16 @@ def ensure_nav_roles():
 		doc = frappe.get_doc(doctype, name)
 		doc.append("roles", {"role": role})
 		doc.save(ignore_permissions=True)
+
+
+def _nav_docs():
+	pairs = [("Workspace", "Desk Assistant")]
+	if _has_roles_table("Desktop Icon") and frappe.db.exists("Desktop Icon", "Desk Assistant"):
+		pairs.append(("Desktop Icon", "Desk Assistant"))
+	return pairs
+
+
+def _has_roles_table(doctype: str) -> bool:
+	if not frappe.db.exists("DocType", doctype):
+		return False
+	return any(df.fieldname == "roles" and df.fieldtype == "Table" for df in frappe.get_meta(doctype).fields)

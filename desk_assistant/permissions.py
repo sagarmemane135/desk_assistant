@@ -39,9 +39,12 @@ def user_is_assistant_manager(user: str | None = None) -> bool:
 
 
 def check_app_permission() -> bool:
+	"""Show this app on the v15 Apps page for managers and granted users."""
 	if frappe.session.user == "Administrator":
 		return True
-	return user_is_assistant_manager()
+	if frappe.session.user == "Guest":
+		return False
+	return user_is_assistant_manager() or user_can_use_assistant()
 
 
 def has_user_ai_settings_permission(doc, ptype: str = "read", user: str | None = None) -> bool:

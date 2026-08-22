@@ -8,7 +8,7 @@
  "doctype": "Workspace",
  "for_user": "",
  "hide_custom": 0,
- "icon": "message-circle",
+ "icon": "message",
  "idx": 0,
  "is_hidden": 0,
  "label": "Desk Assistant",
@@ -97,6 +97,5 @@
    "type": "DocType"
   }
  ],
- "title": "Desk Assistant",
- "type": "Workspace"
+ "title": "Desk Assistant"
 }

@@ -470,7 +470,7 @@ desk_assistant.format_inline = function (text) {
 	html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 	html = html.replace(/__(.+?)__/g, "<strong>$1</strong>");
 	html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
-	html = html.replace(/(^|[^"'>])(\/desk\/[A-Za-z0-9._~\-/%]+)/g, function (_m, prefix, path) {
+	html = html.replace(/(^|[^"'>])(\/(?:desk|app)\/[A-Za-z0-9._~\-/%]+)/g, function (_m, prefix, path) {
 		return prefix + '<a class="desk-assistant-doc-link" href="' + path + '">' + path + "</a>";
 	});
 	return html;

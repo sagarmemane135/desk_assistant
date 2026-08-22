@@ -98,7 +98,7 @@ def language_lock(language: str | None) -> str:
 	return (
 		f"\nCRITICAL LANGUAGE LOCK: The user asked to speak {language}. "
 		f"Write every sentence of this reply in {language}. "
-		"Do not use English except document names, /desk/ links, numbers, and ```chart JSON.\n"
+		"Do not use English except document names, /app/ links, numbers, and ```chart JSON.\n"
 	)
 
 

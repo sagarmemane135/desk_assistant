@@ -1,13 +1,27 @@
-/* Desk Assistant — flex column after .main-section (beside Assign/Share, not overlay). */
+/* Desk Assistant — flex column after .main-section (beside Assign/Share, not overlay).
+   Frappe v15 body is not a flex row; force it when the dock is mounted. */
 
 :root {
 	--desk-assistant-width: 360px;
+}
+
+body.desk-assistant-docked {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: stretch;
+	justify-content: flex-start;
+	position: relative;
+	height: 100vh;
+	overflow: hidden;
 }
 
 body.desk-assistant-docked .main-section {
 	width: auto;
 	flex: 1 1 auto;
 	min-width: 0;
+	height: 100vh;
+	overflow: auto;
 }
 
 .desk-assistant-panel {

@@ -15,6 +15,15 @@ class TestChartsPrompt(FrappeTestCase):
 		self.assertIn("do not add a chart unless", SYSTEM_PROMPT.lower())
 		self.assertIn("reply in the language", SYSTEM_PROMPT.lower())
 		self.assertIn("marathi", SYSTEM_PROMPT.lower())
+		self.assertIn("/app/sales-invoice/", SYSTEM_PROMPT)
+
+	def test_v15_desk_paths_use_app_prefix(self):
+		from desk_assistant.tools.guard import desk_path, is_desk_href
+
+		self.assertTrue(desk_path("Sales Invoice", "INV-1").startswith("/app/sales-invoice/"))
+		self.assertTrue(is_desk_href("/app/todo/TASK-1"))
+		self.assertTrue(is_desk_href("/desk/todo/TASK-1"))
+		self.assertFalse(is_desk_href("https://example.com"))
 
 	def test_citations_from_query_rows(self):
 		from desk_assistant.citations import from_tool_rows
@@ -28,14 +37,15 @@ class TestChartsPrompt(FrappeTestCase):
 						"rows": [
 							{
 								"name": "ACC-SINV-2026-00004",
-								"desk_path": "/desk/sales-invoice/ACC-SINV-2026-00004",
+								"desk_path": "/app/sales-invoice/ACC-SINV-2026-00004",
 							}
 						],
 					},
 				}
 			]
 		)
-		self.assertEqual(rows[0]["name"], "ACC-SINV-2026-00004")
+		self.assertEqual(rows[0]["desk_path"], "/app/sales-invoice/ACC-SINV-2026-00004")
+		self.assertTrue(rows[0]["desk_path"].startswith("/app/"))
 	def test_detects_speak_in_marathi(self):
 		from desk_assistant.language import detect_language, resolve_reply_language
 

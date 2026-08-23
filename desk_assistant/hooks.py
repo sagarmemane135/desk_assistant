@@ -5,7 +5,6 @@ app_description = "Permission-aware AI sidebar for Frappe Desk"
 app_email = "developers@example.com"
 app_license = "mit"
 app_home = "/app/desk-assistant"
-app_logo_url = "/assets/desk_assistant/images/desk-assistant-logo.svg"
 required_apps = []
 
 add_to_apps_screen = [

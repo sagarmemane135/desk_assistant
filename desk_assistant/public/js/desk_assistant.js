@@ -413,8 +413,18 @@ desk_assistant.escape_regex = function (text) {
 	return String(text || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
+desk_assistant.DESK_PATH_TAIL = "\\(\\s*\\/(?:desk|app)\\/[^\\)]+\\)";
+
 desk_assistant.linkify_docs = function (text) {
 	let out = String(text || "");
+	out = out.replace(
+		/\*\*([^*]+)\*\*\s*\(\s*(\/(?:desk|app)\/[^)]+)\)/g,
+		"**[$1]($2)**"
+	);
+	out = out.replace(
+		/\[([^\]]+)\]\((\/(?:desk|app)\/[^)]+)\)\s*\(\s*\/(?:desk|app)\/[^)]+\)/g,
+		"[$1]($2)"
+	);
 	const names = Object.keys(desk_assistant._doc_links || {}).sort(function (a, b) {
 		return b.length - a.length;
 	});
@@ -423,15 +433,49 @@ desk_assistant.linkify_docs = function (text) {
 		if (!path || out.indexOf(name) === -1) {
 			return;
 		}
-		const re = new RegExp("\\[" + desk_assistant.escape_regex(name) + "\\]\\([^\\)]+\\)|" + desk_assistant.escape_regex(name), "g");
-		out = out.replace(re, function (full) {
-			if (full.charAt(0) === "[") {
-				return full;
-			}
-			return "[" + name + "](" + path + ")";
-		});
+		const esc = desk_assistant.escape_regex(name);
+		const re = new RegExp(
+			"\\[" +
+				esc +
+				"\\]\\([^\\)]+\\)(?:\\s*" +
+				desk_assistant.DESK_PATH_TAIL +
+				")?" +
+				"|" +
+				esc +
+				"(?:\\s*" +
+				desk_assistant.DESK_PATH_TAIL +
+				")?",
+			"g"
+		);
+		out = out.replace(re, "[" + name + "](" + path + ")");
 	});
+	out = out.replace(
+		/\[([^\]]+)\]\((\/(?:desk|app)\/[^)]+)\)\s*\(\s*\/(?:desk|app)\/[^)]+\)/g,
+		"[$1]($2)"
+	);
 	return out;
+};
+
+desk_assistant.desk_href_label = function (path) {
+	try {
+		const parts = decodeURIComponent(String(path || ""))
+			.split("/")
+			.filter(Boolean);
+		return parts.length ? parts[parts.length - 1] : path;
+	} catch (e) {
+		return path;
+	}
+};
+
+desk_assistant.doc_anchor = function (href, label) {
+	const path = String(href || "")
+		.trim()
+		.replace(/ /g, "%20");
+	const text =
+		label != null && String(label).trim() ? String(label) : desk_assistant.desk_href_label(path);
+	const cls =
+		path.indexOf("/desk/") === 0 || path.indexOf("/app/") === 0 ? ' class="desk-assistant-doc-link"' : "";
+	return "<a" + cls + ' href="' + desk_assistant.escape_html(path) + '">' + text + "</a>";
 };
 
 desk_assistant.open_desk_path = function (href) {
@@ -461,17 +505,18 @@ desk_assistant.format_inline = function (text) {
 	let html = desk_assistant.escape_html(text);
 	html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
 	html = html.replace(
-		/\[([^\]]+)\]\((\/(?:desk|app)\/[^)\s]+|https?:\/\/[^)\s]+)\)/g,
+		/\[([^\]]+)\]\(\s*<?(\/(?:desk|app)\/[^)>]+|https?:\/\/[^)\s]+)>?\s*\)/g,
 		function (_m, label, href) {
-			const cls = href.indexOf("/desk/") === 0 || href.indexOf("/app/") === 0 ? ' class="desk-assistant-doc-link"' : "";
-			return "<a" + cls + ' href="' + href + '">' + label + "</a>";
+			return desk_assistant.doc_anchor(href.trim(), label);
 		}
 	);
 	html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 	html = html.replace(/__(.+?)__/g, "<strong>$1</strong>");
 	html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+	html = html.replace(/\s*\(\s*\/(?:desk|app)\/[^)]+\)/g, "");
+	html = html.replace(/\(\s*<a class="desk-assistant-doc-link"[^>]*>[^<]*<\/a>\s*\)/g, "");
 	html = html.replace(/(^|[^"'>])(\/(?:desk|app)\/[A-Za-z0-9._~\-/%]+)/g, function (_m, prefix, path) {
-		return prefix + '<a class="desk-assistant-doc-link" href="' + path + '">' + path + "</a>";
+		return prefix + desk_assistant.doc_anchor(path);
 	});
 	return html;
 };

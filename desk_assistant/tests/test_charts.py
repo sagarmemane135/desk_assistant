@@ -15,7 +15,8 @@ class TestChartsPrompt(FrappeTestCase):
 		self.assertIn("do not add a chart unless", SYSTEM_PROMPT.lower())
 		self.assertIn("reply in the language", SYSTEM_PROMPT.lower())
 		self.assertIn("marathi", SYSTEM_PROMPT.lower())
-		self.assertIn("/app/sales-invoice/", SYSTEM_PROMPT)
+		self.assertIn("never print the URL again", SYSTEM_PROMPT.lower())
+		self.assertIn("/app/company/", SYSTEM_PROMPT)
 
 	def test_v15_desk_paths_use_app_prefix(self):
 		from desk_assistant.tools.guard import desk_path, is_desk_href

@@ -33,30 +33,27 @@ Replies stay **short prose** unless you ask for more. The assistant does not inv
 - `top 5 sales invoices of year 2023` → ranking table + Desk links
 - `top 6 sales invoices bar chart` → bar chart, no table unless you also asked for one
 - `which customer has the largest overdue receivable?` → one sentence + invoice link
+- `who is Accounts Manager` → User / Has Role lookup if this session can read those DocTypes
+- `P&L for fiscal year 2023-2024` → Profit and Loss report (dates/FY mapped for the model)
 - `speak in marathi` then any later question in that thread → replies in Marathi until you say `speak in english`
 
 ## Compatibility
 
-This app is built and tested on **Frappe v16** only (Frappe 16.30, Python 3.14). It is **not** tested on Frappe 14 or 15. Desk icons, workspace sidebar, and boot hooks target v16.
+Pick the branch that matches the Frappe version on the site. Do not install `develop` / `version-16` on a Frappe 15 bench, or `version-15` on a Frappe 16 bench.
 
-Use the **`version-16`** branch on a Frappe v16 bench. Use **`develop`** for ongoing work (same code as `version-16` until a later Frappe version exists).
+| Need | `develop` / `version-16` | `version-15` |
+|---|---|---|
+| **Frappe** | v16 (tested on 16.30) | v15 |
+| **Desk URLs** | `/desk/...` | `/app/...` |
+| **Python** | `>=3.14,<3.15` | `>=3.10,<3.15` |
 
-| Need | Detail |
-|---|---|
-| **Frappe** | v16 bench and site. Required. |
-| **Python** | **3.14** (same as Frappe 16: `>=3.14,<3.15`) |
-| **ERPNext** | **Optional.** Not in `required_apps`. Install ERPNext if you want Sales Invoice, stock, customers, and similar DocTypes. Without it, the sidebar still works on Frappe DocTypes the user can read (ToDo, etc.). |
-| **Other apps** | Optional. The assistant can query any DocType the signed-in user can already read (HR, custom apps, …). |
-| **Database / Redis** | Whatever that Frappe site already uses (MariaDB + Redis). No extra services. |
-| **Node** | Needed for `bench build` / `bench get-app` asset build. |
-| **Network** | Outbound HTTPS to the LLM provider (OpenAI, Anthropic, Google, Groq, OpenRouter). **Ollama** needs a reachable Ollama host. Keys stay on the server. |
-| **Browser** | Current Desk (desktop). Mobile layout is not in this version. |
+**ERPNext** is optional (not in `required_apps`) on every branch. Install it for Sales Invoice, stock, customers, and reports such as Profit and Loss. Without it, the sidebar still works on Frappe DocTypes the user can read (ToDo, User, …). Other apps are the same: the assistant can query any DocType the signed-in user can already read.
 
-No extra Python pip packages. Provider SDKs are not bundled; the app calls the HTTP APIs.
+**Database / Redis:** whatever that Frappe site already uses. No extra pip packages; provider SDKs are not bundled. **Node** is needed for `bench build` / `bench get-app`. **Network:** outbound HTTPS to the LLM provider (Ollama needs a reachable host). Keys stay on the server. **Browser:** current Desk (desktop). Mobile layout is not in this version.
 
 ## Requirements
 
-- A Frappe **v16** site on a matching bench
+- A Frappe site on a matching bench (v16 → `develop` / `version-16`; v15 → `version-15`)
 - An API key for at least one supported provider (or a site-wide fallback key)
 
 ## Branches
@@ -65,10 +62,11 @@ Same layout as Frappe / ERPNext:
 
 | Branch | Use |
 |---|---|
-| **`develop`** | Default. New work and PRs go here. |
-| **`version-16`** | Stable line for **Frappe v16** sites. Install this on production v16. |
+| **`develop`** | Default. New work and PRs go here. Frappe **v16**. |
+| **`version-16`** | Stable line for **Frappe v16** sites. Same product as `develop` until a later Frappe line exists. |
+| **`version-15`** | Same product for **Frappe v15** sites (`/app` Desk routes, Python 3.10+). No v16 Workspace Sidebar / Desktop Icon JSON. |
 
-New features land on `develop`. Fixes that must ship on v16 are merged (or cherry-picked) to `version-16`. There is no `version-14` / `version-15` line.
+New features land on `develop`, then merge or cherry-pick to `version-16` and `version-15` without overwriting that branch’s Desk path or Python range. There is no `version-14` line.
 
 ## Install
 
@@ -79,6 +77,12 @@ cd /path/to/frappe-bench
 
 # Frappe v16 site
 bench get-app <your-remote> --branch version-16
+bench --site your.site install-app desk_assistant
+```
+
+```bash
+# Frappe v15 site
+bench get-app <your-remote> --branch version-15
 bench --site your.site install-app desk_assistant
 ```
 
@@ -113,7 +117,7 @@ Installing the app does **not** show the sidebar. A System Manager or **AI Assis
 
 1. Desk → **AI Assistant Settings**
 2. Check **Enabled**
-3. Optional: set a **site default** provider, model, and API key (used only when the user has no key of their own)
+3. Optional: set a **site default** provider, API key, **Fetch Models**, then model (used only when the user has no key of their own)
 4. Optional: leave **Allowed DocTypes** empty (recommended) so any readable DocType works, minus a hard blocklist. Fill it only if you want a sandbox.
 5. Open the **User** form for each person who should chat → add role **AI Assistant User**
 6. That user logs out and back in, or hard-refreshes Desk
@@ -133,11 +137,12 @@ Each granted user opens the gear in the sidebar (or **User AI Settings**) and se
 | Field | Notes |
 |---|---|
 | Provider | `openai`, `anthropic`, `google`, `groq`, `openrouter`, `ollama`, `openai_compatible` |
-| Model | e.g. `gpt-4o-mini`, `claude-sonnet-4-5`, `gemini-2.0-flash` |
 | API key | Stored as a Password field on the server |
-| Base URL | Required for Ollama / OpenAI-compatible; optional override for others |
+| **Fetch Models** | Form button (not a header action). Uses the key on this form, then fills the Model list. |
+| Model | Pick from the fetched list, or type e.g. `gpt-4o-mini`, `claude-sonnet-4-5`, `gemini-2.0-flash` |
+| Base URL | Right column. Required for Ollama / OpenAI-compatible; optional override for others |
 
-Save, then **Test connection**. You can keep more than one provider as **User AI Model Profile** rows and switch the active one.
+Save, then **Test connection** (header button). You can keep more than one provider as **User AI Model Profile** rows and switch the active one. Site defaults on **AI Assistant Settings** use the same field order.
 
 If the user has no key, the site default on **AI Assistant Settings** is used.
 
@@ -150,7 +155,9 @@ If the user has no key, the site default on **AI Assistant Settings** is used.
 
 The open document is optional context, not a limit. The assistant queries whatever that user is allowed to read.
 
-The user still needs normal Frappe permissions for those DocTypes (for example **Accounts User** for Sales Invoice). The assistant does not bypass roles.
+The user still needs normal Frappe permissions for those DocTypes (for example **Accounts User** for Sales Invoice, or **System Manager** to list users). The assistant does not bypass roles.
+
+Financial questions (P&L, Trial Balance, General Ledger) go through `run_report`. The server maps common aliases (`from_date` / `to_date`, a fiscal year name such as `2023-2024`) onto the report’s real filters so the model does not have to guess Frappe field names.
 
 ## Tests
 
@@ -161,8 +168,9 @@ bench --site your.site run-tests --app desk_assistant
 ## Security (short)
 
 - Tools use `frappe.session.user`. No raw SQL, no `ignore_permissions`
-- Hard blocklist includes User, passwords, OAuth, and this app’s own settings DocTypes
-- Password fields are stripped from `get_doc`
+- **User** and **Has Role** follow Desk permissions (a manager can list who holds a role; a user without User read cannot). Passwords and API keys are always stripped from tool output
+- Still blocked: DocPerm, User Permission, Password*, System Settings, Error Log, Email Account, OAuth, this app’s own settings DocTypes
+- Password / `api_key` / `api_secret` fields are stripped from `get_doc` and rejected on `query`
 - Report permission errors stay in the chat; they must not pop Desk modals
 - Keys never appear in boot info or the browser
 

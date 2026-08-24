@@ -6,7 +6,7 @@ import re
 import frappe
 from frappe.model.db_query import DatabaseQuery
 
-from desk_assistant.security import SECRET_FIELDNAMES, is_secret_field
+from desk_assistant.utils.security import SECRET_FIELDNAMES, is_secret_field
 from desk_assistant.tools.guard import desk_path, guard_doctype, max_rows
 
 DANGEROUS = re.compile(r";|--|/\*|\*/|\bunion\b|\bselect\b", re.I)
@@ -147,7 +147,20 @@ def _clean_order(value) -> str | None:
 def _validate_fields(doctype: str, fields: list[str], group_by: str | None) -> dict:
 	meta = frappe.get_meta(doctype)
 	names = {df.fieldname for df in meta.fields}
-	names.update({"name", "owner", "creation", "modified", "modified_by", "docstatus", "idx"})
+	names.update(
+		{
+			"name",
+			"owner",
+			"creation",
+			"modified",
+			"modified_by",
+			"docstatus",
+			"idx",
+			"parent",
+			"parenttype",
+			"parentfield",
+		}
+	)
 	clean = []
 	for field in fields:
 		if DANGEROUS.search(field):
@@ -221,6 +234,8 @@ def _suggested_fields(doctype: str) -> list[str]:
 	}
 	meta = frappe.get_meta(doctype)
 	out = ["name"]
+	if getattr(meta, "istable", 0):
+		out.extend(["parent", "parenttype", "parentfield"])
 	for df in meta.fields:
 		if df.fieldtype in skip or not df.fieldname:
 			continue

@@ -6,7 +6,7 @@ from urllib.parse import quote
 import frappe
 from frappe.desk.utils import slug
 
-from desk_assistant.security import is_blocked_doctype, is_doctype_tool_allowed
+from desk_assistant.utils.security import is_blocked_doctype, is_doctype_tool_allowed
 
 
 def guard_doctype(doctype: str, ptype: str = "read") -> dict | None:

@@ -6,9 +6,9 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
 
-from desk_assistant.passwords import ignore_blank_or_dummy_password
 from desk_assistant.permissions import user_is_assistant_manager
-from desk_assistant.profiles import profile_label
+from desk_assistant.utils.passwords import ignore_blank_or_dummy_password
+from desk_assistant.utils.profiles import profile_label
 
 
 class UserAISettings(Document):

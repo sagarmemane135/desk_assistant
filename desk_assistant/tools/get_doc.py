@@ -4,7 +4,7 @@
 import frappe
 from frappe.utils import cint
 
-from desk_assistant.security import SECRET_FIELDNAMES
+from desk_assistant.utils.security import SECRET_FIELDNAMES
 from desk_assistant.tools.guard import desk_path, guard_doctype
 
 PASSWORD_TYPES = frozenset({"Password"})

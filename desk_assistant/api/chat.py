@@ -7,9 +7,9 @@ import frappe
 from frappe import _
 from werkzeug.wrappers import Response
 
-from desk_assistant.agent import iter_agent, run_agent
-from desk_assistant.citations import from_tool_rows
-from desk_assistant.language import language_lock, resolve_reply_language, with_user_lock
+from desk_assistant.utils.agent import iter_agent, run_agent
+from desk_assistant.utils.citations import from_tool_rows
+from desk_assistant.utils.language import language_lock, resolve_reply_language, with_user_lock
 from desk_assistant.permissions import (
 	assert_can_use_assistant,
 	user_can_use_assistant,
@@ -17,7 +17,7 @@ from desk_assistant.permissions import (
 )
 from desk_assistant.providers import complete_chat, public_llm_status, resolve_llm_config
 from desk_assistant.providers.base import ProviderError
-from desk_assistant.sessions import (
+from desk_assistant.utils.sessions import (
 	append_turn,
 	ensure_session,
 	history_for_model,
@@ -36,7 +36,7 @@ Default answer is short prose (who, amount, document link). Do not add a markdow
 type is bar, line, or pie. Keep labels short. Skip the fence if there are fewer than 2 numeric points.
 Prefer query for lists, rankings, and year-wise invoice totals; run_report for named financial or stock reports the user can run; get_doc for one record; get_me for the signed-in user's name, email, or roles; search when the name is fuzzy; get_meta when you are unsure of field names.
 Sales Analytics is a Sales Order report, not Sales Invoice. For sales invoices by year, query Sales Invoice with posting_date and docstatus=1. Do not run a report on a DocType the user cannot access.
-User and Has Role are readable when this session can already open them in Desk. For 'who is Accounts Manager', query Has Role with that role (parent is the User) or query User and get_doc to read roles. Passwords and API keys are stripped. get_me is only the signed-in user.
+User and Has Role are readable when this session can already open them in Desk. For 'who is Accounts Manager', query Has Role with role and parenttype User (parent is the User name), or query User and get_doc to read roles. Passwords and API keys are stripped. get_me is only the signed-in user.
 Account documents store setup, not live balances. For EBITDA, P&L, or group-account totals, chain tools: query Company and Fiscal Year, then run_report. For a table of every account amount, run Trial Balance. For one account's movements, run General Ledger. Do not stop after the first report error — read filters_used/hint, fix keys, and retry. Use 2–3 tool calls to finish the ask when the user can access the data.
 Profit and Loss Statement / Balance Sheet need company, filter_based_on ('Fiscal Year' or 'Date Range'), from_fiscal_year and to_fiscal_year as Fiscal Year names (e.g. 2026-2027) or period_start_date and period_end_date, plus periodicity Yearly. Passing only from_date/to_date will fail. Trial Balance needs company, fiscal_year, from_date, to_date. General Ledger needs company, from_date, to_date.
 When you mention a document name from tools, write only a markdown link: [My Learning Comapny](/desk/company/My%20Learning%20Comapny). Never print the URL again in parentheses, and never leave a bare ID.

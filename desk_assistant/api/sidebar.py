@@ -6,7 +6,7 @@ from frappe import _
 from frappe.utils import cint
 
 from desk_assistant.permissions import assert_can_use_assistant
-from desk_assistant.profiles import (
+from desk_assistant.utils.profiles import (
 	ensure_legacy_profile,
 	find_profile,
 	mark_active,

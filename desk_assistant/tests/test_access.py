@@ -6,7 +6,7 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import cint
 
 from desk_assistant.permissions import assert_can_use_assistant, user_can_use_assistant
-from desk_assistant.security import is_blocked_doctype, is_doctype_tool_allowed
+from desk_assistant.utils.security import is_blocked_doctype, is_doctype_tool_allowed
 
 
 class TestAccess(FrappeTestCase):

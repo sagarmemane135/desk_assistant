@@ -40,7 +40,7 @@ SCHEMAS = [
 			"Use posting_date between for a calendar year, e.g. [\"2023-01-01\", \"2023-12-31\"]. "
 			"Submitted invoices use docstatus=1. Link columns look like customer.customer_name. "
 			"Aggregates (sum/count) need group_by. Always set order_by and a small limit for rankings. "
-			"Who holds a role: query Has Role with role, or query User then get_doc for roles, if permitted."
+			"Who holds a role: query Has Role with role and parenttype User (parent is the user). "
 		),
 		"parameters": {
 			"type": "object",

@@ -20,7 +20,7 @@ class TestChartsPrompt(FrappeTestCase):
 		self.assertNotIn("the user doctype is blocked", SYSTEM_PROMPT.lower())
 
 	def test_citations_from_query_rows(self):
-		from desk_assistant.citations import from_tool_rows
+		from desk_assistant.utils.citations import from_tool_rows
 
 		rows = from_tool_rows(
 			[
@@ -40,7 +40,7 @@ class TestChartsPrompt(FrappeTestCase):
 		)
 		self.assertEqual(rows[0]["name"], "ACC-SINV-2026-00004")
 	def test_detects_speak_in_marathi(self):
-		from desk_assistant.language import detect_language, resolve_reply_language
+		from desk_assistant.utils.language import detect_language, resolve_reply_language
 
 		self.assertIn("Marathi", detect_language("can you speak in marathi") or "")
 		self.assertIn("Hindi", detect_language("speak in hindi") or "")

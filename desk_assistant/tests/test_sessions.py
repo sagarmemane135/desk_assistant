@@ -158,7 +158,7 @@ class TestSessions(FrappeTestCase):
 		self.assertEqual(doc.messages[-1].content, "Hello")
 
 	def test_tool_writes_audit_log(self):
-		from desk_assistant.audit import log_tool
+		from desk_assistant.utils.audit import log_tool
 
 		log_tool(
 			None,

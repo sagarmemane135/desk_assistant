@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 
-from desk_assistant.passwords import ignore_blank_or_dummy_password
+from desk_assistant.utils.passwords import ignore_blank_or_dummy_password
 
 
 class AIAssistantSettings(Document):

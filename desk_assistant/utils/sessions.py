@@ -6,7 +6,7 @@ import json
 import frappe
 from frappe import _
 
-from desk_assistant.citations import from_session_messages
+from desk_assistant.utils.citations import from_session_messages
 from desk_assistant.permissions import user_is_assistant_manager
 
 HISTORY_CAP = 20

@@ -4,7 +4,7 @@
 import json
 import time
 
-from desk_assistant.audit import log_tool
+from desk_assistant.utils.audit import log_tool
 from desk_assistant.providers import complete_chat, complete_chat_iter
 from desk_assistant.providers.base import Completion, LLMConfig
 from desk_assistant.tools.guard import max_tool_rounds

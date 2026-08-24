@@ -8,10 +8,10 @@
  "field_order": [
   "user",
   "provider",
-  "model",
-  "column_break_key",
   "api_key",
   "fetch_models",
+  "model",
+  "column_break_key",
   "base_url",
   "profiles_section",
   "profiles",
@@ -38,6 +38,18 @@
    "options": "\nopenai\nanthropic\ngoogle\ngroq\nopenrouter\nollama\nopenai_compatible"
   },
   {
+   "fieldname": "api_key",
+   "fieldtype": "Password",
+   "label": "API Key",
+   "length": 2048
+  },
+  {
+   "description": "Load models from the provider using the API key, then pick one in Model.",
+   "fieldname": "fetch_models",
+   "fieldtype": "Button",
+   "label": "Fetch Models"
+  },
+  {
    "fieldname": "model",
    "fieldtype": "Autocomplete",
    "length": 255,
@@ -46,18 +58,6 @@
   {
    "fieldname": "column_break_key",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "api_key",
-   "fieldtype": "Password",
-   "label": "API Key",
-   "length": 2048
-  },
-  {
-   "description": "Load models from the provider using the API key above.",
-   "fieldname": "fetch_models",
-   "fieldtype": "Button",
-   "label": "Fetch Models"
   },
   {
    "description": "Filled automatically for OpenAI, Anthropic, Gemini, OpenRouter, and Ollama. Set yourself only for OpenAI-compatible.",
@@ -98,7 +98,7 @@
  ],
  "idx": 0,
  "links": [],
- "modified": "2026-08-24 22:20:00",
+ "modified": "2026-08-24 23:58:00",
  "modified_by": "Administrator",
  "module": "Desk Assistant",
  "name": "User AI Settings",

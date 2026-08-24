@@ -38,6 +38,20 @@ class TestQueryTool(FrappeTestCase):
 		self.assertEqual(out.get("error"), "invalid_field")
 		self.assertEqual(out.get("field"), "api_key")
 
+	def test_has_role_query_includes_parent(self):
+		out = query_tool.run(
+			{
+				"doctype": "Has Role",
+				"fields": ["parent", "role"],
+				"filters": [["role", "=", "System Manager"], ["parenttype", "=", "User"]],
+				"limit": 5,
+			}
+		)
+		self.assertNotEqual(out.get("error"), "blocked")
+		self.assertNotEqual(out.get("error"), "invalid_field")
+		self.assertIn("rows", out)
+		self.assertTrue(any(row.get("parent") for row in out["rows"]))
+
 	def test_rejects_sql_comment_and_semicolon(self):
 		out = query_tool.run({"doctype": "ToDo", "fields": ["name; drop table tabUser"]})
 		self.assertEqual(out.get("error"), "invalid_field")
@@ -170,7 +184,7 @@ class TestQueryTool(FrappeTestCase):
 			self.assertNotIn("doc", doc)
 
 	def test_agent_runs_query_then_answers(self):
-		from desk_assistant.agent import run_agent
+		from desk_assistant.utils.agent import run_agent
 
 		cfg = LLMConfig(
 			provider="openai",
@@ -191,7 +205,7 @@ class TestQueryTool(FrappeTestCase):
 			],
 		)
 		second = Completion(text="No open todos.")
-		with patch("desk_assistant.agent.complete_chat", side_effect=[first, second]) as complete:
+		with patch("desk_assistant.utils.agent.complete_chat", side_effect=[first, second]) as complete:
 			out = run_agent(cfg, "list todos", system="sys", use_tools=True)
 		self.assertEqual(out["text"], "No open todos.")
 		self.assertEqual(complete.call_count, 2)
@@ -202,7 +216,7 @@ class TestQueryTool(FrappeTestCase):
 		self.assertTrue(complete.call_args_list[0].kwargs.get("tools"))
 
 	def test_iter_agent_yields_token_deltas(self):
-		from desk_assistant.agent import iter_agent
+		from desk_assistant.utils.agent import iter_agent
 		from desk_assistant.providers.base import Completion, LLMConfig
 
 		cfg = LLMConfig(
@@ -221,8 +235,8 @@ class TestQueryTool(FrappeTestCase):
 			yield Completion(text="Hello there")
 
 		with (
-			patch("desk_assistant.agent.complete_chat") as non_stream,
-			patch("desk_assistant.agent.complete_chat_iter", side_effect=lambda *a, **k: fake_iter()),
+			patch("desk_assistant.utils.agent.complete_chat") as non_stream,
+			patch("desk_assistant.utils.agent.complete_chat_iter", side_effect=lambda *a, **k: fake_iter()),
 		):
 			events = list(iter_agent(cfg, "hi", "sys", use_tools=True, stream=True))
 		non_stream.assert_not_called()

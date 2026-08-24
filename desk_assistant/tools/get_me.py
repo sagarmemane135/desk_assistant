@@ -35,5 +35,5 @@ def run(_args: dict | None = None) -> dict:
 		"time_zone": row.get("time_zone"),
 		"roles": roles,
 		"desk_path": desk_path("User", user),
-		"note": "Only the signed-in user. Other User records stay blocked.",
+		"note": "Only the signed-in user. To list other users or who holds a role, query User or Has Role if this session can read them.",
 	}

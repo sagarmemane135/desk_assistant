@@ -15,8 +15,11 @@ class TestChartsPrompt(FrappeTestCase):
 		self.assertIn("do not add a chart unless", SYSTEM_PROMPT.lower())
 		self.assertIn("reply in the language", SYSTEM_PROMPT.lower())
 		self.assertIn("marathi", SYSTEM_PROMPT.lower())
-		self.assertIn("never print the URL again", SYSTEM_PROMPT.lower())
+		self.assertIn("never print the url again", SYSTEM_PROMPT.lower())
 		self.assertIn("/app/company/", SYSTEM_PROMPT)
+		self.assertIn("query has role", SYSTEM_PROMPT.lower())
+		self.assertIn("filter_based_on", SYSTEM_PROMPT)
+		self.assertNotIn("the user doctype is blocked", SYSTEM_PROMPT.lower())
 
 	def test_v15_desk_paths_use_app_prefix(self):
 		from desk_assistant.tools.guard import desk_path, is_desk_href

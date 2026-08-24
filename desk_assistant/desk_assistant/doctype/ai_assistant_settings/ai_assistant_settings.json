@@ -15,6 +15,7 @@
   "default_model",
   "column_break_provider",
   "default_api_key",
+  "fetch_models",
   "default_base_url",
   "allowlist_section",
   "allowed_doctypes"
@@ -79,6 +80,12 @@
    "length": 2048
   },
   {
+   "description": "Load models from the provider using the API key above.",
+   "fieldname": "fetch_models",
+   "fieldtype": "Button",
+   "label": "Fetch Models"
+  },
+  {
    "description": "Filled automatically for OpenAI, Anthropic, Gemini, OpenRouter, and Ollama.",
    "fieldname": "default_base_url",
    "fieldtype": "Data",
@@ -91,7 +98,7 @@
    "label": "DocType Allowlist (optional)"
   },
   {
-   "description": "Leave this table empty (recommended). Empty = the assistant may query any DocType this user can already read in Desk, except a hard blocklist (User, passwords, Error Log, API keys, and similar). Add rows only if you want a narrower AI than Desk — then the assistant can use only those DocTypes, still limited by the user's permissions. Filling this is optional and usually unnecessary.",
+   "description": "Leave this table empty (recommended). Empty = the assistant may query any DocType this user can already read in Desk, except a hard blocklist (passwords, Error Log, API keys, OAuth, and this app's settings). User and Has Role follow Desk permissions. Add rows only if you want a narrower AI than Desk — then the assistant can use only those DocTypes, still limited by the user's permissions. Filling this is optional and usually unnecessary.",
    "fieldname": "allowed_doctypes",
    "fieldtype": "Table",
    "label": "Allowed DocTypes",
@@ -101,7 +108,7 @@
  "idx": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-08-22 16:10:00",
+ "modified": "2026-08-24 22:20:00",
  "modified_by": "Administrator",
  "module": "Desk Assistant",
  "name": "AI Assistant Settings",

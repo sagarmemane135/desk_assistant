@@ -25,10 +25,18 @@ class TestQueryTool(FrappeTestCase):
 			frappe.db.set_single_value("AI Assistant Settings", "enabled", self._prev_enabled)
 		super().tearDown()
 
-	def test_blocks_user_doctype(self):
-		out = query_tool.run({"doctype": "User", "fields": ["name"], "limit": 1})
-		self.assertEqual(out.get("error"), "blocked")
-		self.assertNotIn("rows", out)
+	def test_user_query_allowed_when_permitted(self):
+		out = query_tool.run({"doctype": "User", "fields": ["name", "full_name"], "limit": 1})
+		self.assertNotEqual(out.get("error"), "blocked")
+		self.assertIn("rows", out)
+		self.assertGreaterEqual(len(out["rows"]), 1)
+		self.assertNotIn("api_key", frappe.as_json(out))
+		self.assertNotIn("password", frappe.as_json(out))
+
+	def test_rejects_user_secret_fields(self):
+		out = query_tool.run({"doctype": "User", "fields": ["api_key"], "limit": 1})
+		self.assertEqual(out.get("error"), "invalid_field")
+		self.assertEqual(out.get("field"), "api_key")
 
 	def test_rejects_sql_comment_and_semicolon(self):
 		out = query_tool.run({"doctype": "ToDo", "fields": ["name; drop table tabUser"]})
@@ -71,10 +79,23 @@ class TestQueryTool(FrappeTestCase):
 		self.assertEqual(inst.execute.call_args.kwargs["limit"], 6)
 
 	def test_blocks_more_secret_doctypes(self):
-		for doctype in ("Has Role", "Error Log", "Email Account", "AI Assistant Settings"):
+		for doctype in ("Error Log", "Email Account", "AI Assistant Settings", "User Permission"):
 			out = query_tool.run({"doctype": doctype, "fields": ["name"], "limit": 1})
 			self.assertEqual(out.get("error"), "blocked", doctype)
 			self.assertNotIn("rows", out)
+
+	def test_limited_user_user_query_stays_permission_safe(self):
+		email = "da.slice6.noinvoice@example.com"
+		ensure_user(email, ["AI Assistant User"])
+		frappe.db.set_single_value("AI Assistant Settings", "enabled", 1)
+		frappe.set_user(email)
+		out = query_tool.run({"doctype": "User", "fields": ["name"], "limit": 20})
+		self.assertNotEqual(out.get("error"), "blocked")
+		self.assertNotIn("api_key", frappe.as_json(out))
+		self.assertNotIn("password", frappe.as_json(out))
+		admin = get_doc_run({"doctype": "User", "name": "Administrator"})
+		self.assertIn(admin.get("error"), ("permission_denied", "not_found"))
+		self.assertNotIn("doc", admin)
 
 	def test_allowlist_rejects_other_doctypes(self):
 		settings = frappe.get_single("AI Assistant Settings")

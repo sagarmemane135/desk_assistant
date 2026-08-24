@@ -45,8 +45,10 @@ class TestAccess(FrappeTestCase):
 		frappe.set_user("Administrator")
 		self.assertTrue(user_can_use_assistant())
 
-	def test_user_doctype_is_blocked(self):
-		self.assertTrue(is_blocked_doctype("User"))
+	def test_secret_doctypes_stay_blocked(self):
+		self.assertFalse(is_blocked_doctype("User"))
+		self.assertFalse(is_blocked_doctype("Has Role"))
+		self.assertTrue(is_blocked_doctype("User Permission"))
 		self.assertTrue(is_blocked_doctype("User AI Settings"))
 		self.assertTrue(is_blocked_doctype("User AI Model Profile"))
 		self.assertTrue(is_blocked_doctype("AI Assistant Settings"))
@@ -54,7 +56,8 @@ class TestAccess(FrappeTestCase):
 
 	def test_empty_allowlist_allows_item(self):
 		self.assertTrue(is_doctype_tool_allowed("Item"))
-		self.assertFalse(is_doctype_tool_allowed("User"))
+		self.assertTrue(is_doctype_tool_allowed("User"))
+		self.assertFalse(is_doctype_tool_allowed("User AI Settings"))
 
 	def test_save_prefs_blocked_when_disabled(self):
 		from desk_assistant.api.sidebar import save_prefs

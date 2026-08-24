@@ -39,7 +39,8 @@ SCHEMAS = [
 			"List or rank documents with Desk filters (same engine as list views). "
 			"Use posting_date between for a calendar year, e.g. [\"2023-01-01\", \"2023-12-31\"]. "
 			"Submitted invoices use docstatus=1. Link columns look like customer.customer_name. "
-			"Aggregates (sum/count) need group_by. Always set order_by and a small limit for rankings."
+			"Aggregates (sum/count) need group_by. Always set order_by and a small limit for rankings. "
+			"Who holds a role: query Has Role with role, or query User then get_doc for roles, if permitted."
 		),
 		"parameters": {
 			"type": "object",
@@ -91,16 +92,22 @@ SCHEMAS = [
 		"description": (
 			"The signed-in Desk user: name, email, type, and roles. "
 			"Use for 'who am I', 'my details', or 'my roles'. "
-			"Cannot list, count, or load other User records."
+			"To list other users or who holds a role, query User or Has Role when this session can read them."
 		),
 		"parameters": {"type": "object", "properties": {}},
 	},
 	{
 		"name": "run_report",
 		"description": (
-			"Run a Query Report the user is allowed to run (P&L, stock ledger, aging). "
-			"Cannot draw charts. Sales Analytics reports on Sales Order, not invoices. "
-			"Prefer query for invoice lists and yearly totals."
+			"Run a Query Report the user is allowed to run (P&L, Trial Balance, General Ledger, stock). "
+			"Cannot draw charts. Account DocType has no live balances — use Trial Balance or P&L. "
+			"Profit and Loss / Balance Sheet filters: company, filter_based_on "
+			"('Fiscal Year' or 'Date Range'), from_fiscal_year and to_fiscal_year "
+			"(Fiscal Year names like 2026-2027) or period_start_date and period_end_date, periodicity Yearly. "
+			"Trial Balance: company, fiscal_year, from_date, to_date. "
+			"General Ledger: company, from_date, to_date. "
+			"Sales Analytics reports on Sales Order, not invoices. "
+			"If the report fails, read filters_used and hint, fix keys, and retry."
 		),
 		"parameters": {
 			"type": "object",

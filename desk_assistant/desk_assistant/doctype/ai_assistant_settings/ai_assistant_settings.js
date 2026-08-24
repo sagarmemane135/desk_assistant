@@ -14,9 +14,11 @@ frappe.ui.form.on("AI Assistant Settings", {
 				source: "site",
 			});
 		}
-		frm.add_custom_button(__("Fetch models"), () => {
+	},
+	fetch_models(frm) {
+		if (desk_assistant && desk_assistant.form) {
 			desk_assistant.form.fetch_models(frm, false);
-		});
+		}
 	},
 	default_provider(frm) {
 		if (desk_assistant && desk_assistant.form) {

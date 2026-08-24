@@ -11,6 +11,7 @@
   "model",
   "column_break_key",
   "api_key",
+  "fetch_models",
   "base_url",
   "profiles_section",
   "profiles",
@@ -53,6 +54,12 @@
    "length": 2048
   },
   {
+   "description": "Load models from the provider using the API key above.",
+   "fieldname": "fetch_models",
+   "fieldtype": "Button",
+   "label": "Fetch Models"
+  },
+  {
    "description": "Filled automatically for OpenAI, Anthropic, Gemini, OpenRouter, and Ollama. Set yourself only for OpenAI-compatible.",
    "fieldname": "base_url",
    "fieldtype": "Data",
@@ -91,7 +98,7 @@
  ],
  "idx": 0,
  "links": [],
- "modified": "2026-08-22 16:30:00",
+ "modified": "2026-08-24 22:20:00",
  "modified_by": "Administrator",
  "module": "Desk Assistant",
  "name": "User AI Settings",

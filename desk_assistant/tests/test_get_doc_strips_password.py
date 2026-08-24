@@ -21,9 +21,18 @@ class TestGetDocStripsPassword(FrappeTestCase):
 		self.assertNotIn("super-secret-password", frappe.as_json(out))
 
 	def test_blocked_doctype_is_not_loaded(self):
-		out = get_doc_run({"doctype": "User", "name": "Administrator"})
+		out = get_doc_run({"doctype": "User AI Settings", "name": "Administrator"})
 		self.assertEqual(out.get("error"), "blocked")
 		self.assertNotIn("doc", out)
+
+	def test_get_doc_user_strips_secrets_when_permitted(self):
+		out = get_doc_run({"doctype": "User", "name": "Administrator"})
+		self.assertNotEqual(out.get("error"), "blocked")
+		self.assertIn("doc", out)
+		self.assertNotIn("password", out["doc"])
+		self.assertNotIn("api_key", out["doc"])
+		self.assertNotIn("api_secret", out["doc"])
+		self.assertNotIn("password", frappe.as_json(out))
 
 	def test_blocked_email_account_is_not_loaded(self):
 		out = get_doc_run({"doctype": "Email Account", "name": "anything"})

@@ -4,6 +4,7 @@
 import frappe
 from frappe.utils import cint
 
+from desk_assistant.security import SECRET_FIELDNAMES
 from desk_assistant.tools.guard import desk_path, guard_doctype
 
 PASSWORD_TYPES = frozenset({"Password"})
@@ -36,6 +37,8 @@ def strip_secrets(data: dict) -> dict:
 	doctype = data.get("doctype")
 	if not doctype or not isinstance(data, dict):
 		return data
+	for name in SECRET_FIELDNAMES:
+		data.pop(name, None)
 	meta = frappe.get_meta(doctype)
 	for df in meta.fields:
 		if df.fieldtype in PASSWORD_TYPES or (cint(df.hidden) and df.fieldtype != "Table"):

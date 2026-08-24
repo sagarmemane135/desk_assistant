@@ -24,9 +24,6 @@ frappe.ui.form.on("User AI Settings", {
 				source: "user",
 			});
 		}
-		frm.add_custom_button(__("Fetch models"), () => {
-			desk_assistant.form.fetch_models(frm, false);
-		});
 		if (!frm.is_new()) {
 			frm.add_custom_button(__("Test connection"), () => {
 				const active = (frm.doc.profiles || []).find((row) => row.is_active);
@@ -49,6 +46,11 @@ frappe.ui.form.on("User AI Settings", {
 					},
 				});
 			});
+		}
+	},
+	fetch_models(frm) {
+		if (desk_assistant && desk_assistant.form) {
+			desk_assistant.form.fetch_models(frm, false);
 		}
 	},
 	after_save(frm) {

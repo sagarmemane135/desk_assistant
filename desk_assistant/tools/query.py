@@ -6,6 +6,7 @@ import re
 import frappe
 from frappe.model.db_query import DatabaseQuery
 
+from desk_assistant.security import SECRET_FIELDNAMES, is_secret_field
 from desk_assistant.tools.guard import desk_path, guard_doctype, max_rows
 
 DANGEROUS = re.compile(r";|--|/\*|\*/|\bunion\b|\bselect\b", re.I)
@@ -62,7 +63,13 @@ def run(args: dict) -> dict:
 	truncated = len(rows) > limit
 	rows = rows[:limit]
 	for row in rows:
-		if isinstance(row, dict) and row.get("name"):
+		if not isinstance(row, dict):
+			continue
+		for secret in SECRET_FIELDNAMES:
+			row.pop(secret, None)
+		if doctype == "Has Role" and row.get("parent"):
+			row["desk_path"] = desk_path("User", row["parent"])
+		elif row.get("name"):
 			row["desk_path"] = desk_path(doctype, row["name"])
 	return {"doctype": doctype, "rows": rows, "truncated": truncated}
 
@@ -164,10 +171,29 @@ def _validate_fields(doctype: str, fields: list[str], group_by: str | None) -> d
 			target_names = {f.fieldname for f in target_meta.fields} | {"name"}
 			if target_field not in target_names:
 				return {"error": "invalid_field", "field": field}
+			if is_secret_field(target_field):
+				return {
+					"error": "invalid_field",
+					"field": field,
+					"message": "Secret fields cannot be queried.",
+				}
 			clean.append(field)
 			continue
 		if not IDENT.match(field) or field not in names:
 			return _unknown_field(doctype, field)
+		if is_secret_field(field):
+			return {
+				"error": "invalid_field",
+				"field": field,
+				"message": "Secret fields cannot be queried.",
+			}
+		df = meta.get_field(field)
+		if df and df.fieldtype == "Password":
+			return {
+				"error": "invalid_field",
+				"field": field,
+				"message": "Secret fields cannot be queried.",
+			}
 		clean.append(field)
 	return {"fields": clean}
 
@@ -197,6 +223,8 @@ def _suggested_fields(doctype: str) -> list[str]:
 	out = ["name"]
 	for df in meta.fields:
 		if df.fieldtype in skip or not df.fieldname:
+			continue
+		if is_secret_field(df.fieldname):
 			continue
 		if df.fieldname not in out:
 			out.append(df.fieldname)

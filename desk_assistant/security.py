@@ -7,8 +7,6 @@ import frappe
 
 BLOCKED_DOCTYPES = frozenset(
 	{
-		"User",
-		"Has Role",
 		"DocPerm",
 		"User Permission",
 		"Password",
@@ -25,9 +23,28 @@ BLOCKED_DOCTYPES = frozenset(
 	}
 )
 
+# Always stripped from get_doc / rejected on query, even when the field is not Password.
+SECRET_FIELDNAMES = frozenset(
+	{
+		"api_key",
+		"api_secret",
+		"password",
+		"new_password",
+		"reset_password_key",
+		"last_reset_password_key",
+		"otp_secret",
+		"otpsecret",
+		"last_password",
+	}
+)
+
 
 def is_blocked_doctype(doctype: str) -> bool:
 	return bool(doctype) and doctype in BLOCKED_DOCTYPES
+
+
+def is_secret_field(field: str) -> bool:
+	return bool(field) and field in SECRET_FIELDNAMES
 
 
 def get_allowlist() -> frozenset[str] | None:

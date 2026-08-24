@@ -14,7 +14,10 @@ class TestChartsPrompt(FrappeTestCase):
 		self.assertIn("do not add a markdown table unless", SYSTEM_PROMPT.lower())
 		self.assertIn("do not add a chart unless", SYSTEM_PROMPT.lower())
 		self.assertIn("reply in the language", SYSTEM_PROMPT.lower())
-		self.assertIn("never print the URL again", SYSTEM_PROMPT.lower())
+		self.assertIn("never print the url again", SYSTEM_PROMPT.lower())
+		self.assertIn("query has role", SYSTEM_PROMPT.lower())
+		self.assertIn("filter_based_on", SYSTEM_PROMPT)
+		self.assertNotIn("the user doctype is blocked", SYSTEM_PROMPT.lower())
 
 	def test_citations_from_query_rows(self):
 		from desk_assistant.citations import from_tool_rows

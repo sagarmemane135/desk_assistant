@@ -167,6 +167,14 @@ body.desk-assistant-resizing .desk-assistant-handle {
 	padding: 6px 10px;
 }
 
+.da-set-fetch {
+	display: flex;
+}
+
+.da-set-fetch .btn {
+	width: auto;
+}
+
 .da-set-actions {
 	display: flex;
 	flex-wrap: wrap;

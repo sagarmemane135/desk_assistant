@@ -222,19 +222,21 @@ desk_assistant.inject = function (width, collapsed) {
 				<label class="da-set-label">${__("Provider")}
 					<select id="da-set-provider"></select>
 				</label>
+				<label class="da-set-label">${__("API Key")}
+					<input id="da-set-key" type="password" autocomplete="off" />
+				</label>
+				<div class="da-set-fetch">
+					<button type="button" class="btn btn-default btn-sm da-fetch-models">${__("Fetch models")}</button>
+				</div>
 				<label class="da-set-label">${__("Model")}
 					<input id="da-set-model" list="da-set-models" autocomplete="off" />
 					<datalist id="da-set-models"></datalist>
-				</label>
-				<label class="da-set-label">${__("API Key")}
-					<input id="da-set-key" type="password" autocomplete="off" />
 				</label>
 				<label class="da-set-label">${__("Base URL")}
 					<input id="da-set-url" autocomplete="off" />
 				</label>
 				<p class="da-set-hint">${__("Each user has one settings document. Use + to add OpenAI, Claude, Groq, and so on, then switch with the list above.")}</p>
 				<div class="da-set-actions">
-					<button type="button" class="btn btn-default btn-sm da-fetch-models">${__("Fetch models")}</button>
 					<button type="button" class="btn btn-default btn-sm da-test-settings">${__("Test")}</button>
 					<button type="button" class="btn btn-primary btn-sm da-save-settings">${__("Save")}</button>
 				</div>

@@ -138,11 +138,11 @@ Each granted user opens the gear in the sidebar (or **User AI Settings**) and se
 |---|---|
 | Provider | `openai`, `anthropic`, `google`, `groq`, `openrouter`, `ollama`, `openai_compatible` |
 | API key | Stored as a Password field on the server |
-| **Fetch Models** | Form button (not a header action). Uses the key on this form, then fills the Model list. |
+| **Fetch Models** | After the API key, before Model. Sidebar button and form Button field (not a header action). Uses the key on this screen, then fills the Model list. |
 | Model | Pick from the fetched list, or type e.g. `gpt-4o-mini`, `claude-sonnet-4-5`, `gemini-2.0-flash` |
-| Base URL | Right column. Required for Ollama / OpenAI-compatible; optional override for others |
+| Base URL | After Model. Required for Ollama / OpenAI-compatible; optional override for others |
 
-Save, then **Test connection** (header button). You can keep more than one provider as **User AI Model Profile** rows and switch the active one. Site defaults on **AI Assistant Settings** use the same field order.
+**Test** and **Save** stay at the bottom of the sidebar (on the form, Test is a header button). You can keep more than one provider as **User AI Model Profile** rows and switch the active one. Site defaults on **AI Assistant Settings** use the same field order.
 
 If the user has no key, the site default on **AI Assistant Settings** is used.
 

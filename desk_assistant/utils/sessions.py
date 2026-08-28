@@ -73,6 +73,7 @@ def append_turn(
 			},
 		)
 	doc.append("messages", {"role": "assistant", "content": (assistant_text or "")[:STORE_CAP]})
+	doc.flags.allow_message_write = True
 	doc.save()
 
 

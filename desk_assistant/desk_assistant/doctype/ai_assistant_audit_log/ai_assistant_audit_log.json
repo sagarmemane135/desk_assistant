@@ -92,8 +92,9 @@
   }
  ],
  "idx": 0,
+ "in_create": 1,
  "links": [],
- "modified": "2026-08-22 06:00:00",
+ "modified": "2026-08-28 18:05:00",
  "modified_by": "Administrator",
  "module": "Desk Assistant",
  "name": "AI Assistant Audit Log",
@@ -101,14 +102,12 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
    "delete": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager",
-   "write": 1
+   "role": "System Manager"
   },
   {
    "export": 1,

@@ -34,6 +34,7 @@ permission_query_conditions = {
 has_permission = {
 	"User AI Settings": "desk_assistant.permissions.has_user_ai_settings_permission",
 	"AI Chat Session": "desk_assistant.permissions.has_chat_session_permission",
+	"AI Assistant Audit Log": "desk_assistant.permissions.has_audit_log_permission",
 }
 
 doctype_js = {

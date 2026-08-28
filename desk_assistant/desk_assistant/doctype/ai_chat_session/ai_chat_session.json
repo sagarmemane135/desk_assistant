@@ -23,6 +23,7 @@
    "in_standard_filter": 1,
    "label": "User",
    "options": "User",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -46,12 +47,14 @@
   {
    "fieldname": "provider",
    "fieldtype": "Data",
-   "label": "Provider"
+   "label": "Provider",
+   "read_only": 1
   },
   {
    "fieldname": "model",
    "fieldtype": "Data",
-   "label": "Model"
+   "label": "Model",
+   "read_only": 1
   },
   {
    "fieldname": "messages_section",
@@ -59,15 +62,18 @@
    "label": "Messages"
   },
   {
+   "cannot_add_rows": 1,
+   "cannot_delete_rows": 1,
    "fieldname": "messages",
    "fieldtype": "Table",
    "label": "Messages",
-   "options": "AI Chat Message"
+   "options": "AI Chat Message",
+   "read_only": 1
   }
  ],
  "idx": 0,
  "links": [],
- "modified": "2026-08-22 06:00:00",
+ "modified": "2026-08-28 18:05:00",
  "modified_by": "Administrator",
  "module": "Desk Assistant",
  "name": "AI Chat Session",

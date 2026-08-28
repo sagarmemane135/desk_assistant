@@ -173,6 +173,7 @@ bench --site your.site run-tests --app desk_assistant
 - Password / `api_key` / `api_secret` fields are stripped from `get_doc` and rejected on `query`
 - Report permission errors stay in the chat; they must not pop Desk modals
 - Keys never appear in boot info or the browser
+- **AI Assistant Audit Log** is append-only (tool/query arguments cannot be edited). Chat **Messages** (including tool calls) are read-only on the form; the sidebar still appends them.
 
 ## License
 

@@ -101,3 +101,10 @@ class TestPermissions(FrappeTestCase):
 		frappe.set_user("Administrator")
 		out = run_tool("query", {"doctype": "ToDo", "fields": ["name"], "limit": 1})
 		self.assertEqual(out.get("error"), "not_enabled")
+
+	def test_audit_log_write_denied_even_for_administrator(self):
+		from desk_assistant.permissions import has_audit_log_permission
+
+		self.assertFalse(has_audit_log_permission(None, "write", "Administrator"))
+		self.assertFalse(has_audit_log_permission(None, "create", "Administrator"))
+		self.assertTrue(has_audit_log_permission(None, "read"))

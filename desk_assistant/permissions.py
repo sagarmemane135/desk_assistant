@@ -83,3 +83,12 @@ def get_chat_session_query(user: str | None = None) -> str:
 	if user_is_assistant_manager(user):
 		return ""
 	return f"`tabAI Chat Session`.user = {frappe.db.escape(user)}"
+
+
+def has_audit_log_permission(doc, ptype: str = "read", user: str | None = None) -> bool:
+	"""Managers may read/export. Nobody may create or write from Desk (insert uses ignore_permissions)."""
+	if ptype in ("write", "create", "submit", "cancel", "amend"):
+		return False
+	if ptype == "delete":
+		return "System Manager" in frappe.get_roles(user or frappe.session.user)
+	return user_is_assistant_manager(user)

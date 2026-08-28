@@ -178,3 +178,26 @@ class TestSessions(FrappeTestCase):
 		self.assertEqual(row.target_doctype, "ToDo")
 		self.assertEqual(row.row_count, 1)
 		self.assertNotIn("api_key", frappe.as_json(row.as_dict()))
+		row.tool_name = "hacked"
+		with self.assertRaises(frappe.ValidationError):
+			row.save()
+
+	def test_chat_messages_cannot_be_edited(self):
+		from desk_assistant.utils.sessions import append_turn, ensure_session
+
+		session = ensure_session(None)
+		append_turn(session, "hello", "world", provider="openai", model="gpt-4o")
+		doc = frappe.get_doc("AI Chat Session", session)
+		self.assertEqual(doc.messages[0].content, "hello")
+		doc.messages[0].content = "tampered"
+		with self.assertRaises(frappe.ValidationError):
+			doc.save()
+		doc.reload()
+		doc.messages[0].tool_name = "query"
+		doc.messages[0].tool_payload = {"doctype": "ToDo"}
+		with self.assertRaises(frappe.ValidationError):
+			doc.save()
+		doc.reload()
+		doc.title = "Renamed"
+		doc.save()
+		self.assertEqual(frappe.get_doc("AI Chat Session", session).title, "Renamed")

@@ -22,6 +22,8 @@ app_include_js = "desk_assistant.bundle.js"
 
 after_install = "desk_assistant.install.after_install"
 after_migrate = "desk_assistant.install.after_migrate"
+before_uninstall = "desk_assistant.install.before_uninstall"
+after_uninstall = "desk_assistant.install.after_uninstall"
 
 boot_session = "desk_assistant.boot.boot_session"
 extend_bootinfo = "desk_assistant.boot.extend_bootinfo"

@@ -8,6 +8,9 @@ ROLES = (
 	"AI Assistant User",
 )
 
+APP_NAME = "desk_assistant"
+APP_TITLE = "Desk Assistant"
+
 
 def after_install():
 	ensure_roles()
@@ -20,6 +23,19 @@ def after_migrate():
 	ensure_roles()
 	ensure_nav_roles()
 	restore_site_brand_logo()
+
+
+def before_uninstall():
+	remove_nav_artifacts()
+	restore_site_brand_logo()
+	frappe.clear_cache()
+
+
+def after_uninstall():
+	# Core after_app_uninstall still misses the icon (matches app_name, not title).
+	remove_nav_artifacts()
+	restore_site_brand_logo()
+	frappe.clear_cache()
 
 
 def ensure_roles():
@@ -58,9 +74,9 @@ def ensure_nav_roles():
 
 
 def _nav_docs():
-	pairs = [("Workspace", "Desk Assistant")]
-	if _has_roles_table("Desktop Icon") and frappe.db.exists("Desktop Icon", "Desk Assistant"):
-		pairs.append(("Desktop Icon", "Desk Assistant"))
+	pairs = [("Workspace", APP_TITLE)]
+	if _has_roles_table("Desktop Icon") and frappe.db.exists("Desktop Icon", APP_TITLE):
+		pairs.append(("Desktop Icon", APP_TITLE))
 	return pairs
 
 
@@ -68,3 +84,38 @@ def _has_roles_table(doctype: str) -> bool:
 	if not frappe.db.exists("DocType", doctype):
 		return False
 	return any(df.fieldname == "roles" and df.fieldtype == "Table" for df in frappe.get_meta(doctype).fields)
+
+
+def remove_nav_artifacts():
+	"""Drop workspace / icon leftovers Frappe core can leave behind after uninstall.
+
+	On Frappe v16, Desktop Icon name is the app title, but core matches the app_name hook.
+	On Frappe v15, Workspace Sidebar / v16 Desktop Icon may not exist; skip those DocTypes.
+	"""
+	for doctype in ("Desktop Icon", "Workspace Sidebar", "Workspace"):
+		if not frappe.db.exists("DocType", doctype):
+			continue
+		names = set()
+		if frappe.db.exists(doctype, APP_TITLE):
+			names.add(APP_TITLE)
+		meta = frappe.get_meta(doctype)
+		if meta.has_field("app"):
+			names.update(frappe.get_all(doctype, filters={"app": APP_NAME}, pluck="name"))
+		if meta.has_field("logo_url"):
+			names.update(
+				frappe.get_all(
+					doctype,
+					filters={"logo_url": ["like", f"%/{APP_NAME}/%"]},
+					pluck="name",
+				)
+			)
+		for name in names:
+			frappe.delete_doc(
+				doctype,
+				name,
+				force=True,
+				ignore_permissions=True,
+				ignore_on_trash=True,
+				delete_permanently=True,
+			)
+	frappe.cache.delete_key("desktop_icons")
